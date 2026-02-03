@@ -13,7 +13,9 @@ class AdventurePlexAPITester:
         self.tests_passed = 0
         self.test_user_id = None
         self.test_user_name = "Test User"
-        self.test_phone = "5551234567"
+        # Use timestamp to ensure unique phone number
+        timestamp = str(int(time.time()))[-7:]  # Last 7 digits of timestamp
+        self.test_phone = f"555{timestamp}"
 
     def log(self, message):
         """Log test messages with timestamp"""
