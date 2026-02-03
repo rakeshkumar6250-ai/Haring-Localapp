@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
@@ -14,13 +14,12 @@ const QRCode = dynamic(() => import('react-qr-code').then(mod => mod.default), {
 export default function PassPage() {
   const params = useParams();
   const id = params.id;
-  const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const res = await fetch(`/api/user/${id}`);
       if (!res.ok) {
@@ -39,18 +38,18 @@ export default function PassPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   // Initial fetch
   useEffect(() => {
     fetchUser();
-  }, [id]);
+  }, [fetchUser]);
 
   // Polling every 3 seconds for real-time updates
   useEffect(() => {
     const interval = setInterval(fetchUser, 3000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [fetchUser]);
 
   if (loading) {
     return (
