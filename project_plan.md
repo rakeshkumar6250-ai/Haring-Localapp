@@ -155,39 +155,44 @@ model Staff {
 - [x] Create notification stubs (log events)
 - [x] Seed initial staff data (PIN: 1234)
 
-### PHASE 2: Customer Frontend
-- [ ] Build `/register` page
+### PHASE 2: Customer Frontend (COMPLETE ✅)
+- [x] Build `/register` page
   - Form with Name + Phone fields
   - Validation & error handling
-  - Success screen with "View Pass" button
-- [ ] Build `/pass/[id]` page
+  - Success screen redirects to `/pass/[id]`
+- [x] Build `/pass/[id]` page
   - Mobile-optimized wallet card design
-  - Dynamic stamp visualization (X/10)
+  - Dynamic stamp visualization (X/10) with circles
   - QR code containing user ID
-  - "Add to Home Screen" prompt
-  - Real-time updates via SSE/polling
+  - Real-time updates via polling every 3 seconds
+  - "Reward Ready" banner when stamps = 10
 
-### PHASE 3: Staff Frontend
-- [ ] Build `/staff/login` page
+### PHASE 3: Staff Frontend (COMPLETE ✅)
+- [x] Build `/staff/login` page
   - PIN input (hardcoded: 1234 for MVP)
   - Session storage for auth state
-- [ ] Build `/staff/scan` page
+  - Auto-submit on 4 digits
+- [x] Build `/staff/scan` page
   - Camera permission request
-  - QR scanner integration
-  - Auto-redirect to action page on scan
-- [ ] Build `/staff/action/[userId]` page
-  - Display customer name & stamp count
+  - QR scanner integration (html5-qrcode)
+  - Auto-redirect to action panel on scan
+- [x] Action Panel shows:
+  - Customer name & stamp count
   - "Add Stamp" button (if < 10)
   - "Redeem Reward" button (if = 10)
   - Success/confirmation feedback
-  - Back to scanner button
+  - Auto-reset after 2 seconds
 
-### PHASE 4: Admin Dashboard
-- [ ] Build `/admin` page
+### PHASE 4: Admin Dashboard (COMPLETE ✅)
+- [x] Build `/admin` page
   - Total Customers metric
   - Stamps Given Today metric
   - Total Redemptions metric
-  - Recent activity list (optional)
+  - Active Users metric
+  - Ready to Redeem metric
+  - Redemptions Today metric
+  - Recent activity list
+  - Auto-refresh every 10 seconds
 
 ### PHASE 5: Testing & Polish
 - [ ] End-to-end flow testing
