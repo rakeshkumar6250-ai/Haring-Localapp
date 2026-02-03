@@ -1,11 +1,33 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String
+  phone          String        @unique
+  currentStamps  Int           @default(0)
+  lifetimeVisits Int           @default(0)
+  joinDate       DateTime      @default(now())
+  transactions   Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // "EARN" or "REDEEM"
+  staffId   String   @default("STAFF_001")
+  timestamp DateTime @default(now())
+}
+
+model Staff {
+  id   String @id @default(cuid())
+  name String
+  pin  String
 }
