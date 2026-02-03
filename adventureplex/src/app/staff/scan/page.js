@@ -1,19 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5Qrcode } from 'html5-qrcode';
-import Link from 'next/link';
 
 export default function StaffScanPage() {
   const router = useRouter();
   const [staffAuth, setStaffAuth] = useState(null);
-  const [scanning, setScanning] = useState(false);
   const [scannedUser, setScannedUser] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionResult, setActionResult] = useState(null);
   const [error, setError] = useState('');
-  const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
   // Check staff authentication
