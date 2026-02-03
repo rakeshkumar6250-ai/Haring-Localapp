@@ -50,18 +50,24 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 409 && data.existingId) {
-          // User already exists, redirect to their pass
-          router.push(`/pass/${data.existingId}`);
-          return;
+        if (res.status === 409) {
+          if (data.existingId) {
+            // User already exists, redirect to their pass
+            router.push(`/pass/${data.existingId}`);
+            return;
+          }
+          // Show specific duplicate message
+          throw new Error(data.error || 'This phone number is already registered');
         }
-        throw new Error(data.error || 'Registration failed');
+        // Show the actual error message from API
+        throw new Error(data.error || `Registration failed (Status: ${res.status})`);
       }
 
       // Success - redirect to digital pass
       router.push(`/pass/${data.user.id}`);
     } catch (err) {
-      setError(err.message);
+      console.error('Registration error:', err);
+      setError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
