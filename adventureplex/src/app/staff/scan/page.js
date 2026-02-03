@@ -41,13 +41,11 @@ export default function StaffScanPage() {
           async (decodedText) => {
             // Stop scanner on successful scan
             await html5QrCode.stop();
-            setScanning(false);
             handleScan(decodedText);
           },
           () => {} // Ignore errors during scanning
         );
-        setScanning(true);
-      } catch (err) {
+      } catch (_err) {
         setError('Camera access denied. Please allow camera permissions.');
       }
     };
