@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import Link from 'next/link';
 
-export default function PassPage({ params }) {
-  const { id } = use(params);
+export default function PassPage() {
+  const params = useParams();
+  const id = params.id;
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
