@@ -75,8 +75,19 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Registration error:', error);
+    
+    // Handle specific Prisma errors
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'This phone number is already registered. Please use a different number.' },
+        { status: 409 }
+      );
+    }
+    
+    // Provide more detailed error message
+    const errorMessage = error.message || 'Failed to register user';
     return NextResponse.json(
-      { error: 'Failed to register user' },
+      { error: errorMessage, details: process.env.NODE_ENV === 'development' ? error.toString() : undefined },
       { status: 500 }
     );
   }
