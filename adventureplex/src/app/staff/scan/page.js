@@ -45,7 +45,7 @@ export default function StaffScanPage() {
           },
           () => {} // Ignore errors during scanning
         );
-      } catch (_err) {
+      } catch {
         setError('Camera access denied. Please allow camera permissions.');
       }
     };
