@@ -2,8 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import QRCode from 'react-qr-code';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
+
+// Dynamic import QRCode to avoid SSR issues
+const QRCode = dynamic(() => import('react-qr-code').then(mod => mod.default), {
+  ssr: false,
+  loading: () => <div className="w-40 h-40 bg-slate-200 animate-pulse rounded" />
+});
 
 export default function PassPage() {
   const params = useParams();
