@@ -22,16 +22,16 @@ body {
 /* Pulse Animation for Mic */
 @keyframes pulse-ring {
   0% {
-    transform: scale(0.8);
-    opacity: 0.8;
+    transform: scale(0.95);
+    opacity: 0.7;
   }
   50% {
-    transform: scale(1.2);
-    opacity: 0.4;
+    transform: scale(1.15);
+    opacity: 0.3;
   }
   100% {
-    transform: scale(0.8);
-    opacity: 0.8;
+    transform: scale(0.95);
+    opacity: 0.7;
   }
 }
 
@@ -40,16 +40,17 @@ body {
     transform: scale(1);
   }
   50% {
-    transform: scale(1.1);
+    transform: scale(1.02);
   }
 }
 
 .mic-pulse {
-  animation: pulse-dot 1.5s ease-in-out infinite;
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 .mic-pulse-ring {
-  animation: pulse-ring 1.5s ease-in-out infinite;
+  animation: pulse-ring 2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .recording .mic-pulse {
@@ -58,7 +59,7 @@ body {
 
 .recording .mic-pulse-ring {
   animation: pulse-ring 0.5s ease-in-out infinite;
-  background: #EF4444;
+  background: #EF4444 !important;
 }
 
 /* Audio Player Styling */
