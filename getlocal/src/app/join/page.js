@@ -303,7 +303,7 @@ export default function JoinPage() {
 
       // Make request WITHOUT setting Content-Type (browser sets it with boundary)
       console.log('[CLIENT] Sending upload request...');
-      const res = await fetch('/api/upload-audio', {
+      const res = await fetch('/nextapi/upload-audio', {
         method: 'POST',
         body: formData,
         // NOTE: Do NOT set Content-Type header - browser handles it for FormData

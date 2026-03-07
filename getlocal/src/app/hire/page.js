@@ -27,7 +27,7 @@ export default function HirePage() {
   // Fetch candidates with auto-refresh
   const fetchCandidates = useCallback(async () => {
     try {
-      const res = await fetch('/api/candidates');
+      const res = await fetch('/nextapi/candidates');
       const data = await res.json();
       // Sort by created_at descending to show newest first
       const sorted = (data.candidates || []).sort((a, b) => 
@@ -44,7 +44,7 @@ export default function HirePage() {
 
   const fetchCredits = useCallback(async () => {
     try {
-      const res = await fetch('/api/wallet');
+      const res = await fetch('/nextapi/wallet');
       const data = await res.json();
       setCredits(data.balance || 100);
       setUnlockedIds(data.unlockedCandidates || []);
@@ -70,7 +70,7 @@ export default function HirePage() {
 
     setUnlocking(candidateId);
     try {
-      const res = await fetch('/api/unlock', {
+      const res = await fetch('/nextapi/unlock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidateId }),

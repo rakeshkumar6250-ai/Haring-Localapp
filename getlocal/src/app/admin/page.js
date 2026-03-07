@@ -19,10 +19,10 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       // Fetch stats
-      const candidatesRes = await fetch('/api/candidates');
+      const candidatesRes = await fetch('/nextapi/candidates');
       const candidatesData = await candidatesRes.json();
       
-      const jobsRes = await fetch('/api/jobs');
+      const jobsRes = await fetch('/nextapi/jobs');
       const jobsData = await jobsRes.json();
 
       setStats({
