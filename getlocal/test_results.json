@@ -1,0 +1,70 @@
+{
+  "summary": {
+    "total_tests": 10,
+    "passed_tests": 9,
+    "success_rate": 90.0,
+    "timestamp": "2026-03-07T19:11:27.041428"
+  },
+  "test_results": [
+    {
+      "test": "GET /api/candidates",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:26.405286"
+    },
+    {
+      "test": "GET /api/wallet",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:26.425367"
+    },
+    {
+      "test": "GET /api/jobs",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:26.437737"
+    },
+    {
+      "test": "POST /api/upload-audio (no file)",
+      "success": false,
+      "details": "Status: 500, Expected: 400, Response: {'error': 'Failed to upload audio: Content-Type was not one of \"multipart/form-data\" or \"application/x-www-form-urlencoded\".'}",
+      "timestamp": "2026-03-07T19:11:26.807552"
+    },
+    {
+      "test": "GET /api/wallet",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:26.822239"
+    },
+    {
+      "test": "GET /api/candidates",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:26.836449"
+    },
+    {
+      "test": "POST /api/unlock",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:27.027874"
+    },
+    {
+      "test": "GET /api/wallet",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-07T19:11:27.041287"
+    },
+    {
+      "test": "Credit deduction verification",
+      "success": true,
+      "details": "Expected: 90, Got: 90",
+      "timestamp": "2026-03-07T19:11:27.041398"
+    },
+    {
+      "test": "Candidate unlock verification",
+      "success": true,
+      "details": "Candidate cand-001 in unlocked list: True",
+      "timestamp": "2026-03-07T19:11:27.041405"
+    }
+  ]
+}
