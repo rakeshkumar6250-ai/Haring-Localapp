@@ -3,25 +3,92 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --trust-blue: #0052CC;
+  --success-green: #36B37E;
+  --dark-bg: #0A0F1C;
+  --card-bg: #151B2D;
+  --text-primary: #FFFFFF;
+  --text-secondary: #8B95A5;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--dark-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding-bottom: 80px;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* Pulse Animation for Mic */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
   }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.mic-pulse {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.mic-pulse-ring {
+  animation: pulse-ring 1.5s ease-in-out infinite;
+}
+
+.recording .mic-pulse {
+  animation: pulse-dot 0.5s ease-in-out infinite;
+}
+
+.recording .mic-pulse-ring {
+  animation: pulse-ring 0.5s ease-in-out infinite;
+  background: #EF4444;
+}
+
+/* Audio Player Styling */
+.audio-player {
+  background: linear-gradient(135deg, var(--trust-blue) 0%, #003d99 100%);
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  background: rgba(21, 27, 45, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Card Hover Effect */
+.candidate-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.candidate-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 82, 204, 0.2);
+}
+
+/* Broadcast Button Animation */
+@keyframes blast {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.blasting {
+  animation: blast 0.3s ease-in-out infinite;
 }
