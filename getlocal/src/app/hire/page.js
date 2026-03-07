@@ -12,6 +12,7 @@ export default function HirePage() {
   const [unlockedIds, setUnlockedIds] = useState([]);
   const [credits, setCredits] = useState(100);
   const [unlocking, setUnlocking] = useState(null);
+  const [processing, setProcessing] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
 
   // Get user location
@@ -29,7 +30,6 @@ export default function HirePage() {
     try {
       const res = await fetch('/nextapi/candidates');
       const data = await res.json();
-      // Sort by created_at descending to show newest first
       const sorted = (data.candidates || []).sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
       );
@@ -56,8 +56,6 @@ export default function HirePage() {
   useEffect(() => {
     fetchCandidates();
     fetchCredits();
-    
-    // Auto-refresh every 10 seconds
     const interval = setInterval(fetchCandidates, 10000);
     return () => clearInterval(interval);
   }, [fetchCandidates, fetchCredits]);
@@ -90,6 +88,32 @@ export default function HirePage() {
     }
   };
 
+  // Trigger AI processing for a candidate
+  const handleProcessAudio = async (candidateId) => {
+    setProcessing(candidateId);
+    try {
+      const res = await fetch('/nextapi/process-audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh candidates to show updated info
+        await fetchCandidates();
+        alert(`Profile processed! Name: ${data.extracted?.name || 'Unknown'}`);
+      } else {
+        alert(data.error || 'Processing failed');
+      }
+    } catch (err) {
+      console.error('Process error:', err);
+      alert('Processing failed: ' + err.message);
+    } finally {
+      setProcessing(null);
+    }
+  };
+
   // Filter candidates
   const filteredCandidates = candidates
     .map(c => {
@@ -102,7 +126,7 @@ export default function HirePage() {
     })
     .filter(c => c.distance <= distanceFilter)
     .filter(c => !roleFilter || c.role_category?.toLowerCase().includes(roleFilter.toLowerCase()))
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Newest first
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
     <div className="min-h-screen pb-24">
@@ -122,7 +146,6 @@ export default function HirePage() {
           </div>
         </div>
 
-        {/* Search */}
         <input
           type="text"
           placeholder="Search by role (Driver, Helper, Cook...)"
@@ -132,7 +155,6 @@ export default function HirePage() {
           data-testid="role-search"
         />
 
-        {/* Distance Slider */}
         <div className="flex items-center gap-4">
           <span className="text-sm text-[#8B95A5]">Distance:</span>
           <input
@@ -158,13 +180,14 @@ export default function HirePage() {
         ) : filteredCandidates.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[#8B95A5] mb-2">No candidates found</p>
-            <p className="text-sm text-[#8B95A5]">Try increasing the distance or changing the role filter</p>
+            <p className="text-sm text-[#8B95A5]">Try increasing the distance</p>
           </div>
         ) : (
           filteredCandidates.map((candidate) => {
             const isUnlocked = unlockedIds.includes(candidate._id);
             const isNew = candidate.created_at && 
-              (new Date() - new Date(candidate.created_at)) < 60000; // Less than 1 minute old
+              (new Date() - new Date(candidate.created_at)) < 60000;
+            const isProcessed = candidate.moltbot_processed;
             
             return (
               <CandidateCard
@@ -172,8 +195,11 @@ export default function HirePage() {
                 candidate={candidate}
                 isUnlocked={isUnlocked}
                 isNew={isNew}
+                isProcessed={isProcessed}
                 onUnlock={() => handleUnlock(candidate._id)}
+                onProcess={() => handleProcessAudio(candidate._id)}
                 unlocking={unlocking === candidate._id}
+                processing={processing === candidate._id}
               />
             );
           })
@@ -183,9 +209,10 @@ export default function HirePage() {
   );
 }
 
-function CandidateCard({ candidate, isUnlocked, isNew, onUnlock, unlocking }) {
+function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, onProcess, unlocking, processing }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const togglePlay = () => {
     if (!candidate.audio_interview_url) return;
@@ -201,23 +228,17 @@ function CandidateCard({ candidate, isUnlocked, isNew, onUnlock, unlocking }) {
     <div className={`candidate-card bg-[#151B2D] rounded-2xl p-4 border transition-all ${
       isNew ? 'border-[#36B37E] ring-2 ring-[#36B37E]/20' : 'border-white/5'
     }`} data-testid="candidate-card">
-      {/* New Badge */}
-      {isNew && (
-        <div className="flex justify-end mb-2">
-          <span className="bg-[#36B37E] text-white text-xs px-2 py-1 rounded-full font-medium animate-pulse">
-            NEW
-          </span>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="font-bold text-lg" data-testid="candidate-name">{candidate.name || 'Candidate'}</h3>
-          <p className="text-[#8B95A5] text-sm">{candidate.role_category || 'General Worker'}</p>
-          {candidate.lang_code && (
-            <span className="text-xs text-[#0052CC]">
-              🗣 {candidate.lang_code === 'hi' ? 'Hindi' : candidate.lang_code === 'te' ? 'Telugu' : 'English'}
+      {/* Badges */}
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex gap-2">
+          {isNew && (
+            <span className="bg-[#36B37E] text-white text-xs px-2 py-1 rounded-full font-medium animate-pulse">
+              NEW
+            </span>
+          )}
+          {isProcessed && (
+            <span className="bg-[#0052CC] text-white text-xs px-2 py-1 rounded-full font-medium">
+              ✓ AI Processed
             </span>
           )}
         </div>
@@ -227,37 +248,127 @@ function CandidateCard({ candidate, isUnlocked, isNew, onUnlock, unlocking }) {
         </div>
       </div>
 
-      {/* Audio Player */}
-      {candidate.audio_interview_url && (
-        <div className="audio-player rounded-xl p-4 mb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={togglePlay}
-              className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all active:scale-95"
-              data-testid="play-audio-btn"
-            >
-              {isPlaying ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              )}
-            </button>
-            <div className="flex-1">
-              <p className="text-white text-sm font-medium">Listen to Fluency</p>
-              <p className="text-white/60 text-xs">Voice interview recording</p>
-            </div>
+      {/* Header */}
+      <div className="mb-4">
+        <h3 className="font-bold text-lg" data-testid="candidate-name">
+          {candidate.name || 'Candidate'}
+        </h3>
+        <p className="text-[#8B95A5] text-sm">{candidate.role_category || 'General Worker'}</p>
+        {candidate.experience_years > 0 && (
+          <p className="text-[#0052CC] text-sm font-medium">
+            {candidate.experience_years} years experience
+          </p>
+        )}
+        {candidate.lang_code && (
+          <span className="text-xs text-[#8B95A5]">
+            🗣 {candidate.lang_code === 'hi' ? 'Hindi' : candidate.lang_code === 'te' ? 'Telugu' : 'English'}
+          </span>
+        )}
+      </div>
+
+      {/* AI Summary (if processed) */}
+      {isProcessed && candidate.professional_summary && (
+        <div className="bg-[#0052CC]/10 border border-[#0052CC]/30 rounded-xl p-4 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0052CC" strokeWidth="2">
+              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span className="text-[#0052CC] text-sm font-medium">AI Profile Summary</span>
           </div>
-          <audio
-            ref={audioRef}
-            src={candidate.audio_interview_url}
-            onEnded={() => setIsPlaying(false)}
-            className="hidden"
-          />
+          <p className="text-white text-sm leading-relaxed">
+            {candidate.professional_summary}
+          </p>
+        </div>
+      )}
+
+      {/* Audio Player / Process Button */}
+      {candidate.audio_interview_url && (
+        <div className="mb-4">
+          {!isProcessed ? (
+            // Show audio player with process button
+            <div className="space-y-3">
+              <div className="audio-player rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={togglePlay}
+                    className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all active:scale-95"
+                    data-testid="play-audio-btn"
+                  >
+                    {isPlaying ? (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <polygon points="5,3 19,12 5,21" />
+                      </svg>
+                    )}
+                  </button>
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">Listen to Fluency</p>
+                    <p className="text-white/60 text-xs">Voice interview recording</p>
+                  </div>
+                </div>
+                <audio
+                  ref={audioRef}
+                  src={candidate.audio_interview_url}
+                  onEnded={() => setIsPlaying(false)}
+                  className="hidden"
+                />
+              </div>
+              
+              {/* Process with AI button */}
+              <button
+                onClick={onProcess}
+                disabled={processing}
+                className="w-full bg-gradient-to-r from-[#0052CC] to-[#36B37E] hover:opacity-90 disabled:opacity-50 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+                data-testid="process-ai-btn"
+              >
+                {processing ? (
+                  <>
+                    <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
+                    </svg>
+                    Processing with AI...
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+                      <path d="M12 16v-4"/>
+                      <path d="M12 8h.01"/>
+                    </svg>
+                    Process with AI (Extract Profile)
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            // Show View Profile button instead
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="w-full bg-[#151B2D] border border-[#0052CC]/50 text-[#0052CC] font-medium py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#0052CC]/10 transition-all"
+              data-testid="view-profile-btn"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              {showProfile ? 'Hide Profile Details' : 'View Full Profile'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Expanded Profile Details */}
+      {showProfile && isProcessed && candidate.transcription && (
+        <div className="bg-[#0A0F1C] rounded-xl p-4 mb-4 border border-white/10">
+          <h4 className="text-sm font-medium text-[#8B95A5] mb-2">Interview Transcript</h4>
+          <p className="text-white/80 text-sm leading-relaxed">
+            {candidate.transcription}
+          </p>
         </div>
       )}
 
@@ -277,7 +388,7 @@ function CandidateCard({ candidate, isUnlocked, isNew, onUnlock, unlocking }) {
             data-testid="call-btn"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
             Call Now
           </a>
