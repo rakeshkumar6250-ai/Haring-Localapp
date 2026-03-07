@@ -12,8 +12,15 @@ export default function BottomNav() {
     { href: '/admin', icon: 'wallet', label: 'Admin' },
   ];
 
-  const getIcon = (icon, isActive) => {
-    const color = isActive ? '#0052CC' : '#8B95A5';
+  const isActive = (href) => {
+    if (href === '/join') {
+      return pathname === '/join' || pathname === '/';
+    }
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  const getIcon = (icon, active) => {
+    const color = active ? '#0052CC' : '#8B95A5';
     
     switch (icon) {
       case 'mic':
@@ -49,20 +56,28 @@ export default function BottomNav() {
     <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-50 px-4 py-3" data-testid="bottom-nav">
       <div className="flex justify-around items-center max-w-md mx-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (pathname === '/' && item.href === '/join');
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-                isActive ? 'bg-[#0052CC]/10' : 'hover:bg-white/5'
+              className={`flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all ${
+                active 
+                  ? 'bg-[#0052CC]/10' 
+                  : 'hover:bg-white/5 active:bg-white/10'
               }`}
               data-testid={`nav-${item.icon}`}
             >
-              {getIcon(item.icon, isActive)}
-              <span className={`text-xs font-medium ${isActive ? 'text-[#0052CC]' : 'text-[#8B95A5]'}`}>
+              {getIcon(item.icon, active)}
+              <span className={`text-xs font-medium ${
+                active ? 'text-[#0052CC]' : 'text-[#8B95A5]'
+              }`}>
                 {item.label}
               </span>
+              {/* Active indicator dot */}
+              {active && (
+                <div className="absolute -bottom-1 w-1 h-1 bg-[#0052CC] rounded-full" />
+              )}
             </Link>
           );
         })}

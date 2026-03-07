@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { calculateDistance, maskPhone, formatDistance } from '@/lib/utils';
 
 export default function HirePage() {
@@ -12,44 +12,37 @@ export default function HirePage() {
   const [unlockedIds, setUnlockedIds] = useState([]);
   const [credits, setCredits] = useState(100);
   const [unlocking, setUnlocking] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   // Get user location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          });
-        },
-        () => {
-          // Default location
-          setUserLocation({ lat: 28.6139, lng: 77.2090 });
-        }
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setUserLocation({ lat: 28.6139, lng: 77.2090 })
       );
     }
   }, []);
 
-  // Fetch candidates
-  useEffect(() => {
-    fetchCandidates();
-    fetchCredits();
-  }, []);
-
-  const fetchCandidates = async () => {
+  // Fetch candidates with auto-refresh
+  const fetchCandidates = useCallback(async () => {
     try {
       const res = await fetch('/api/candidates');
       const data = await res.json();
-      setCandidates(data.candidates || []);
+      // Sort by created_at descending to show newest first
+      const sorted = (data.candidates || []).sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+      setCandidates(sorted);
+      setLastRefresh(new Date());
     } catch (err) {
       console.error('Failed to fetch candidates:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCredits = async () => {
+  const fetchCredits = useCallback(async () => {
     try {
       const res = await fetch('/api/wallet');
       const data = await res.json();
@@ -58,7 +51,16 @@ export default function HirePage() {
     } catch (err) {
       console.error('Failed to fetch wallet:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchCandidates();
+    fetchCredits();
+    
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(fetchCandidates, 10000);
+    return () => clearInterval(interval);
+  }, [fetchCandidates, fetchCredits]);
 
   const handleUnlock = async (candidateId) => {
     if (credits < 10) {
@@ -88,7 +90,7 @@ export default function HirePage() {
     }
   };
 
-  // Filter candidates by distance and role
+  // Filter candidates
   const filteredCandidates = candidates
     .map(c => {
       if (!userLocation || !c.location) return { ...c, distance: 999 };
@@ -100,14 +102,21 @@ export default function HirePage() {
     })
     .filter(c => c.distance <= distanceFilter)
     .filter(c => !roleFilter || c.role_category?.toLowerCase().includes(roleFilter.toLowerCase()))
-    .sort((a, b) => a.distance - b.distance);
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Newest first
 
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-[#0A0F1C]/95 backdrop-blur-lg border-b border-white/10 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">Find Candidates</h1>
+          <div>
+            <h1 className="text-xl font-bold">Find Candidates</h1>
+            {lastRefresh && (
+              <p className="text-xs text-[#8B95A5]">
+                Updated {lastRefresh.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
           <div className="bg-[#36B37E]/20 text-[#36B37E] px-3 py-1 rounded-full text-sm font-medium" data-testid="credit-balance">
             💰 {credits} credits
           </div>
@@ -154,11 +163,15 @@ export default function HirePage() {
         ) : (
           filteredCandidates.map((candidate) => {
             const isUnlocked = unlockedIds.includes(candidate._id);
+            const isNew = candidate.created_at && 
+              (new Date() - new Date(candidate.created_at)) < 60000; // Less than 1 minute old
+            
             return (
               <CandidateCard
                 key={candidate._id}
                 candidate={candidate}
                 isUnlocked={isUnlocked}
+                isNew={isNew}
                 onUnlock={() => handleUnlock(candidate._id)}
                 unlocking={unlocking === candidate._id}
               />
@@ -170,13 +183,12 @@ export default function HirePage() {
   );
 }
 
-function CandidateCard({ candidate, isUnlocked, onUnlock, unlocking }) {
+function CandidateCard({ candidate, isUnlocked, isNew, onUnlock, unlocking }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const togglePlay = () => {
     if (!candidate.audio_interview_url) return;
-    
     if (isPlaying) {
       audioRef.current?.pause();
     } else {
@@ -186,12 +198,28 @@ function CandidateCard({ candidate, isUnlocked, onUnlock, unlocking }) {
   };
 
   return (
-    <div className="candidate-card bg-[#151B2D] rounded-2xl p-4 border border-white/5" data-testid="candidate-card">
+    <div className={`candidate-card bg-[#151B2D] rounded-2xl p-4 border transition-all ${
+      isNew ? 'border-[#36B37E] ring-2 ring-[#36B37E]/20' : 'border-white/5'
+    }`} data-testid="candidate-card">
+      {/* New Badge */}
+      {isNew && (
+        <div className="flex justify-end mb-2">
+          <span className="bg-[#36B37E] text-white text-xs px-2 py-1 rounded-full font-medium animate-pulse">
+            NEW
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-bold text-lg" data-testid="candidate-name">{candidate.name || 'Candidate'}</h3>
           <p className="text-[#8B95A5] text-sm">{candidate.role_category || 'General Worker'}</p>
+          {candidate.lang_code && (
+            <span className="text-xs text-[#0052CC]">
+              🗣 {candidate.lang_code === 'hi' ? 'Hindi' : candidate.lang_code === 'te' ? 'Telugu' : 'English'}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 text-[#36B37E] text-sm font-medium" data-testid="candidate-distance">
           <span>📍</span>
@@ -205,7 +233,7 @@ function CandidateCard({ candidate, isUnlocked, onUnlock, unlocking }) {
           <div className="flex items-center gap-3">
             <button
               onClick={togglePlay}
-              className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all"
+              className="w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-all active:scale-95"
               data-testid="play-audio-btn"
             >
               {isPlaying ? (
@@ -245,7 +273,7 @@ function CandidateCard({ candidate, isUnlocked, onUnlock, unlocking }) {
         {isUnlocked ? (
           <a
             href={`tel:${candidate.phone}`}
-            className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+            className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
             data-testid="call-btn"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -257,11 +285,16 @@ function CandidateCard({ candidate, isUnlocked, onUnlock, unlocking }) {
           <button
             onClick={onUnlock}
             disabled={unlocking}
-            className="bg-[#0052CC] hover:bg-[#003d99] disabled:bg-gray-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all"
+            className="bg-[#0052CC] hover:bg-[#003d99] disabled:bg-gray-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
             data-testid="unlock-btn"
           >
             {unlocking ? (
-              <span>Unlocking...</span>
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
+                </svg>
+                Unlocking...
+              </span>
             ) : (
               <>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

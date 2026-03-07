@@ -1,50 +1,77 @@
 import { NextResponse } from 'next/server';
 import { getCandidates } from '@/lib/mongodb';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, access } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function POST(request) {
+// Ensure upload directory exists on startup
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'audio');
+
+async function ensureUploadDir() {
   try {
+    await access(UPLOAD_DIR);
+  } catch {
+    console.log('[UPLOAD] Creating audio directory:', UPLOAD_DIR);
+    await mkdir(UPLOAD_DIR, { recursive: true });
+  }
+}
+
+export async function POST(request) {
+  console.log('[UPLOAD] Received upload request');
+  
+  try {
+    // Ensure directory exists
+    await ensureUploadDir();
+    
+    // Parse multipart form data
     const formData = await request.formData();
+    
+    // Extract audio file
     const audioFile = formData.get('audio');
+    if (!audioFile || !(audioFile instanceof Blob)) {
+      console.error('[UPLOAD ERROR] No audio file in request');
+      return NextResponse.json(
+        { error: 'No audio file provided', details: 'Expected multipart/form-data with audio field' },
+        { status: 400 }
+      );
+    }
+    
+    console.log('[UPLOAD] Audio file received, size:', audioFile.size, 'bytes');
+    
+    // Extract metadata from form
     const language = formData.get('language') || 'en';
-    const langCode = formData.get('lang_code') || language; // For translation model
+    const langCode = formData.get('lang_code') || language;
     const interviewType = formData.get('interview_type') || 'freeform';
     const questionsAnswered = parseInt(formData.get('questions_answered')) || 0;
     const lat = parseFloat(formData.get('lat')) || 28.6139;
     const lng = parseFloat(formData.get('lng')) || 77.2090;
+    const extractedName = formData.get('extracted_name') || null;
+    const extractedRole = formData.get('extracted_role') || null;
+    
+    console.log('[UPLOAD] Metadata:', { langCode, interviewType, questionsAnswered, extractedName, extractedRole });
 
-    if (!audioFile) {
-      return NextResponse.json(
-        { error: 'No audio file provided' },
-        { status: 400 }
-      );
-    }
-
-    // Generate unique filename with language tag
+    // Generate unique candidate ID and filename
     const candidateId = uuidv4();
     const fileName = `${candidateId}_lang-${langCode}.webm`;
+    const filePath = path.join(UPLOAD_DIR, fileName);
     
-    // Ensure audio directory exists
-    const audioDir = path.join(process.cwd(), 'public', 'audio');
-    await mkdir(audioDir, { recursive: true });
-    
-    // Save audio file
+    // Convert blob to buffer and save
     const bytes = await audioFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const filePath = path.join(audioDir, fileName);
+    
+    console.log('[UPLOAD] Writing file to:', filePath);
     await writeFile(filePath, buffer);
+    console.log('[UPLOAD] File written successfully');
 
-    // Create candidate record in MongoDB with language metadata
+    // Create candidate record in MongoDB
     const candidates = await getCandidates();
     
     const candidate = {
       _id: candidateId,
-      name: `Candidate ${candidateId.slice(0, 6)}`, // Placeholder, MoltBot will extract
-      phone: '', // To be filled by MoltBot transcription
+      name: extractedName || `Candidate ${candidateId.slice(0, 6)}`,
+      phone: '',
       location: { lat, lng },
-      role_category: 'General', // MoltBot will categorize
+      role_category: extractedRole || 'General',
       audio_interview_url: `/audio/${fileName}`,
       
       // Language metadata for translation model
@@ -54,20 +81,21 @@ export async function POST(request) {
         type: interviewType,
         questions_answered: questionsAnswered,
         translation_model: getTranslationModel(langCode),
+        file_size_bytes: audioFile.size,
         recorded_at: new Date()
       },
       
       is_verified: false,
       created_at: new Date(),
-      transcription: null, // MoltBot will populate
+      transcription: null,
       moltbot_processed: false
     };
 
-    await candidates.insertOne(candidate);
-
-    console.log(`[UPLOAD] Audio saved: ${fileName}`);
-    console.log(`[UPLOAD] Language: ${langCode} | Translation Model: ${getTranslationModel(langCode)}`);
-    console.log(`[UPLOAD] Interview Type: ${interviewType} | Questions: ${questionsAnswered}`);
+    const result = await candidates.insertOne(candidate);
+    console.log('[UPLOAD] MongoDB insert result:', result.insertedId);
+    
+    console.log(`[UPLOAD SUCCESS] Audio saved: ${fileName}`);
+    console.log(`[UPLOAD SUCCESS] Language: ${langCode} | Model: ${getTranslationModel(langCode)}`);
     console.log(`[MOLTBOT HOOK] Ready for processing: /audio/${fileName}`);
 
     return NextResponse.json({
@@ -76,13 +104,23 @@ export async function POST(request) {
       audioUrl: `/audio/${fileName}`,
       language: langCode,
       translationModel: getTranslationModel(langCode),
+      fileSize: audioFile.size,
       message: 'Audio uploaded successfully. AI Agent will process shortly.'
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Upload error:', error);
+    // Detailed error logging
+    console.error('[UPLOAD ERROR] Failed to process upload:');
+    console.error('[UPLOAD ERROR] Name:', error.name);
+    console.error('[UPLOAD ERROR] Message:', error.message);
+    console.error('[UPLOAD ERROR] Stack:', error.stack);
+    
     return NextResponse.json(
-      { error: 'Failed to upload audio: ' + error.message },
+      { 
+        error: 'Failed to upload audio',
+        details: error.message,
+        type: error.name
+      },
       { status: 500 }
     );
   }
