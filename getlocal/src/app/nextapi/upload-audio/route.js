@@ -4,6 +4,84 @@ import { writeFile, mkdir, access, constants } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
+// Mock data for automatic transcription processing
+const MOCK_NAMES = {
+  en: ['Rajesh Kumar', 'Priya Singh', 'Amit Sharma', 'Sunita Devi', 'Vikram Yadav', 'Meera Patel'],
+  hi: ['राजेश कुमार', 'प्रिया सिंह', 'अमित शर्मा', 'सुनीता देवी', 'विक्रम यादव', 'मीरा पटेल'],
+  te: ['రాజేష్ కుమార్', 'ప్రియ సింగ్', 'అమిత్ శర్మ', 'సునీత దేవి', 'విక్రమ్ యాదవ్', 'మీరా పటేల్']
+};
+
+const MOCK_SUMMARIES = {
+  en: [
+    'Experienced professional with strong communication skills. Has worked in multiple household and commercial settings.',
+    'Dedicated worker with proven track record in customer-facing roles. Known for punctuality and reliability.',
+    'Skilled candidate with hands-on experience in the service industry. Demonstrates strong work ethic.',
+    'Reliable professional seeking stable employment. Previous employers praise attention to detail.'
+  ],
+  hi: [
+    'अनुभवी पेशेवर जिसके पास मजबूत संचार कौशल है। कई घरेलू और व्यावसायिक सेटिंग्स में काम किया है।',
+    'समर्पित कार्यकर्ता जिसका ग्राहक-सामना भूमिकाओं में सिद्ध ट्रैक रिकॉर्ड है।',
+    'सेवा उद्योग में व्यावहारिक अनुभव वाले कुशल उम्मीदवार।',
+    'स्थिर रोजगार की तलाश में विश्वसनीय पेशेवर।'
+  ],
+  te: [
+    'బలమైన కమ్యూనికేషన్ నైపుణ్యాలతో అనుభవజ్ఞుడైన వృత్తి నిపుణుడు.',
+    'కస్టమర్-ఫేసింగ్ పాత్రల్లో నిరూపితమైన ట్రాక్ రికార్డ్ ఉన్న అంకితభావంతో పనిచేసే వ్యక్తి.',
+    'సర్వీస్ ఇండస్ట్రీలో అనుభవం ఉన్న నైపుణ్యం కలిగిన అభ్యర్థి.',
+    'స్థిరమైన ఉద్యోగం కోరుతున్న నమ్మకమైన వృత్తి నిపుణుడు.'
+  ]
+};
+
+// Background mock transcription processor
+async function processMockTranscription(candidateId, langCode) {
+  console.log(`[MOLTBOT] Starting background mock transcription for ${candidateId} (lang: ${langCode})`);
+  
+  // Wait 5 seconds to simulate AI processing
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  
+  try {
+    const candidates = await getCandidates();
+    const candidate = await candidates.findOne({ _id: candidateId });
+    
+    if (!candidate) {
+      console.error(`[MOLTBOT] Candidate ${candidateId} not found`);
+      return;
+    }
+    
+    // Select mock data based on language
+    const lang = ['hi', 'te'].includes(langCode) ? langCode : 'en';
+    const names = MOCK_NAMES[lang];
+    const summaries = MOCK_SUMMARIES[lang];
+    
+    const mockName = names[Math.floor(Math.random() * names.length)];
+    const mockExperience = Math.floor(Math.random() * 8) + 1; // 1-8 years
+    const mockSummary = summaries[Math.floor(Math.random() * summaries.length)];
+    
+    // Update MongoDB with extracted data
+    await candidates.updateOne(
+      { _id: candidateId },
+      {
+        $set: {
+          name: mockName,
+          experience_years: mockExperience,
+          professional_summary: mockSummary,
+          transcription: `[MOCK - ${langCode.toUpperCase()}] Auto-transcribed interview for ${mockName}`,
+          moltbot_processed: true,
+          processed_at: new Date()
+        }
+      }
+    );
+    
+    console.log(`[MOLTBOT] ✓ Successfully processed ${candidateId}`);
+    console.log(`[MOLTBOT]   Name: ${mockName}`);
+    console.log(`[MOLTBOT]   Experience: ${mockExperience} years`);
+    console.log(`[MOLTBOT]   Summary: ${mockSummary.substring(0, 50)}...`);
+    
+  } catch (error) {
+    console.error(`[MOLTBOT] Error processing ${candidateId}:`, error.message);
+  }
+}
+
 // Upload directory path
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'audio');
 
@@ -174,6 +252,12 @@ export async function POST(request) {
     
     console.log('[UPLOAD] ========== SUCCESS ==========');
     console.log(`[MOLTBOT HOOK] Ready for processing: /audio/${fileName}`);
+    
+    // Trigger background mock transcription (non-blocking)
+    processMockTranscription(candidateId, langCode).catch(err => {
+      console.error('[MOLTBOT] Background processing error:', err.message);
+    });
+    console.log(`[MOLTBOT] Background transcription queued for ${candidateId}`);
 
     return NextResponse.json({
       success: true,

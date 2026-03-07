@@ -224,6 +224,12 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
     setIsPlaying(!isPlaying);
   };
 
+  // Format language display
+  const getLanguageLabel = (code) => {
+    const labels = { 'hi': 'हिंदी', 'te': 'తెలుగు', 'en': 'English' };
+    return labels[code] || 'English';
+  };
+
   return (
     <div className={`candidate-card bg-[#151B2D] rounded-2xl p-4 border transition-all ${
       isNew ? 'border-[#36B37E] ring-2 ring-[#36B37E]/20' : 'border-white/5'
@@ -241,6 +247,11 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
               ✓ AI Processed
             </span>
           )}
+          {!isProcessed && candidate.audio_interview_url && (
+            <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-1 rounded-full font-medium animate-pulse">
+              ⏳ Processing...
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 text-[#36B37E] text-sm font-medium" data-testid="candidate-distance">
           <span>📍</span>
@@ -248,35 +259,38 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
         </div>
       </div>
 
-      {/* Header */}
+      {/* Header with Name prominently displayed */}
       <div className="mb-4">
-        <h3 className="font-bold text-lg" data-testid="candidate-name">
+        <h3 className="font-bold text-xl text-white" data-testid="candidate-name">
           {candidate.name || 'Candidate'}
         </h3>
-        <p className="text-[#8B95A5] text-sm">{candidate.role_category || 'General Worker'}</p>
-        {candidate.experience_years > 0 && (
-          <p className="text-[#0052CC] text-sm font-medium">
-            {candidate.experience_years} years experience
-          </p>
-        )}
-        {candidate.lang_code && (
-          <span className="text-xs text-[#8B95A5]">
-            🗣 {candidate.lang_code === 'hi' ? 'Hindi' : candidate.lang_code === 'te' ? 'Telugu' : 'English'}
-          </span>
-        )}
+        <div className="flex items-center gap-3 mt-1 flex-wrap">
+          <span className="text-[#8B95A5] text-sm">{candidate.role_category || 'General Worker'}</span>
+          {candidate.experience_years > 0 && (
+            <span className="bg-[#0052CC]/20 text-[#0052CC] text-xs px-2 py-1 rounded-full font-medium">
+              {candidate.experience_years} yrs exp
+            </span>
+          )}
+          {candidate.lang_code && (
+            <span className="bg-[#8B95A5]/10 text-[#8B95A5] text-xs px-2 py-1 rounded-full">
+              🗣 {getLanguageLabel(candidate.lang_code)}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* AI Summary (if processed) */}
+      {/* AI Summary - Now shown prominently when processed */}
       {isProcessed && candidate.professional_summary && (
-        <div className="bg-[#0052CC]/10 border border-[#0052CC]/30 rounded-xl p-4 mb-4">
+        <div className="bg-gradient-to-br from-[#0052CC]/15 to-[#36B37E]/10 border border-[#0052CC]/30 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0052CC" strokeWidth="2">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
-              <path d="M12 6v6l4 2"/>
+              <path d="M12 2L2 7v10l10 5 10-5V7l-10-5z"/>
+              <path d="M12 22V12"/>
+              <path d="M2 7l10 5 10-5"/>
             </svg>
-            <span className="text-[#0052CC] text-sm font-medium">AI Profile Summary</span>
+            <span className="text-[#0052CC] text-sm font-semibold">AI Profile Summary</span>
           </div>
-          <p className="text-white text-sm leading-relaxed">
+          <p className="text-white/90 text-sm leading-relaxed" data-testid="candidate-summary">
             {candidate.professional_summary}
           </p>
         </div>
@@ -346,18 +360,50 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
               </button>
             </div>
           ) : (
-            // Show View Profile button instead
-            <button
-              onClick={() => setShowProfile(!showProfile)}
-              className="w-full bg-[#151B2D] border border-[#0052CC]/50 text-[#0052CC] font-medium py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#0052CC]/10 transition-all"
-              data-testid="view-profile-btn"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              {showProfile ? 'Hide Profile Details' : 'View Full Profile'}
-            </button>
+            // Processed: Show compact audio + View Profile option
+            <div className="space-y-3">
+              {/* Compact audio player */}
+              <div className="flex items-center gap-3 bg-[#0A0F1C]/50 rounded-xl p-3">
+                <button
+                  onClick={togglePlay}
+                  className="w-10 h-10 bg-[#0052CC]/30 hover:bg-[#0052CC]/50 rounded-full flex items-center justify-center transition-all"
+                  data-testid="play-audio-btn-compact"
+                >
+                  {isPlaying ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#0052CC">
+                      <rect x="6" y="4" width="4" height="16" />
+                      <rect x="14" y="4" width="4" height="16" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#0052CC">
+                      <polygon points="5,3 19,12 5,21" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-sm text-[#8B95A5]">Listen to voice interview</span>
+                <audio
+                  ref={audioRef}
+                  src={candidate.audio_interview_url}
+                  onEnded={() => setIsPlaying(false)}
+                  className="hidden"
+                />
+              </div>
+              
+              {/* View Full Transcript toggle */}
+              <button
+                onClick={() => setShowProfile(!showProfile)}
+                className="w-full bg-[#151B2D] border border-[#0052CC]/50 text-[#0052CC] font-medium py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-[#0052CC]/10 transition-all"
+                data-testid="view-profile-btn"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                {showProfile ? 'Hide Transcript' : 'View Full Transcript'}
+              </button>
+            </div>
           )}
         </div>
       )}

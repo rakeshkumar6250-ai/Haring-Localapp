@@ -70,11 +70,11 @@ class GetLocalAPITester:
         """Test candidates API endpoints"""
         print("\n🔍 Testing Candidates API...")
         
-        # Test GET /api/candidates
+        # Test GET /nextapi/candidates
         success, data = self.test_api_endpoint(
-            "GET /api/candidates",
+            "GET /nextapi/candidates",
             "GET",
-            "/api/candidates"
+            "/nextapi/candidates"
         )
         
         if success and 'candidates' in data:
@@ -87,11 +87,11 @@ class GetLocalAPITester:
         """Test wallet API endpoints"""
         print("\n💰 Testing Wallet API...")
         
-        # Test GET /api/wallet
+        # Test GET /nextapi/wallet
         success, data = self.test_api_endpoint(
-            "GET /api/wallet",
+            "GET /nextapi/wallet",
             "GET",
-            "/api/wallet"
+            "/nextapi/wallet"
         )
         
         if success:
@@ -106,11 +106,11 @@ class GetLocalAPITester:
         """Test unlock API endpoint"""
         print(f"\n🔓 Testing Unlock API for candidate {candidate_id}...")
         
-        # Test POST /api/unlock
+        # Test POST /nextapi/unlock
         success, data = self.test_api_endpoint(
-            "POST /api/unlock",
+            "POST /nextapi/unlock",
             "POST",
-            "/api/unlock",
+            "/nextapi/unlock",
             expected_status=200,
             data={"candidateId": candidate_id}
         )
@@ -127,11 +127,11 @@ class GetLocalAPITester:
         """Test jobs API endpoints"""
         print("\n💼 Testing Jobs API...")
         
-        # Test GET /api/jobs
+        # Test GET /nextapi/jobs
         success, data = self.test_api_endpoint(
-            "GET /api/jobs",
+            "GET /nextapi/jobs",
             "GET",
-            "/api/jobs"
+            "/nextapi/jobs"
         )
         
         if success and 'jobs' in data:
@@ -143,20 +143,140 @@ class GetLocalAPITester:
         return []
 
     def test_upload_audio_api(self):
-        """Test audio upload API (without actual file)"""
+        """Test audio upload API endpoint structure"""
         print("\n🎤 Testing Upload Audio API...")
         
-        # Test POST /api/upload-audio without file (should fail)
+        # Test POST /nextapi/upload-audio without file (should fail)
         success, data = self.test_api_endpoint(
-            "POST /api/upload-audio (no file)",
+            "POST /nextapi/upload-audio (no file)",
             "POST",
-            "/api/upload-audio",
+            "/nextapi/upload-audio",
             expected_status=400,
             data={}
         )
         
         # This should fail as expected since we're not sending a file
         return success
+
+    def test_mock_transcription_flow(self):
+        """Test mock transcription processing flow with real file upload"""
+        print("\n🎯 Testing Mock Transcription Flow...")
+        import tempfile
+        import os
+        
+        # Create a small mock .webm file for testing
+        test_audio_path = '/tmp/test_audio.webm'
+        with open(test_audio_path, 'wb') as f:
+            # Write minimal webm header bytes (for testing only)
+            f.write(b'\x1a\x45\xdf\xa3\x9f\x42\x86\x81\x01\x42\xf7\x81\x01')
+            f.write(b'Mock audio content for testing purposes' * 10)
+        
+        languages_to_test = ['en', 'hi', 'te']
+        upload_results = []
+        
+        for lang_code in languages_to_test:
+            print(f"\n   Testing language: {lang_code}")
+            
+            # Prepare multipart form data
+            try:
+                import requests
+                url = f"{self.base_url}/nextapi/upload-audio"
+                
+                with open(test_audio_path, 'rb') as audio_file:
+                    files = {'audio': ('test_audio.webm', audio_file, 'audio/webm')}
+                    data = {
+                        'lang_code': lang_code,
+                        'language': lang_code,
+                        'interview_type': 'freeform',
+                        'questions_answered': '0',
+                        'lat': '28.6139',
+                        'lng': '77.2090'
+                    }
+                    
+                    response = requests.post(url, files=files, data=data, timeout=15)
+                    
+                    if response.status_code == 201:
+                        result = response.json()
+                        candidate_id = result.get('candidateId')
+                        
+                        print(f"   ✅ Upload successful for {lang_code}: {candidate_id}")
+                        upload_results.append({
+                            'lang_code': lang_code,
+                            'candidate_id': candidate_id,
+                            'success': True
+                        })
+                        
+                        self.log_test(f"Audio upload - {lang_code}", True, f"Candidate ID: {candidate_id}")
+                        
+                    else:
+                        print(f"   ❌ Upload failed for {lang_code}: {response.status_code}")
+                        self.log_test(f"Audio upload - {lang_code}", False, f"Status: {response.status_code}")
+                        upload_results.append({
+                            'lang_code': lang_code,
+                            'candidate_id': None,
+                            'success': False
+                        })
+                
+            except Exception as e:
+                print(f"   ❌ Upload error for {lang_code}: {str(e)}")
+                self.log_test(f"Audio upload - {lang_code}", False, f"Error: {str(e)}")
+                upload_results.append({
+                    'lang_code': lang_code,
+                    'candidate_id': None,
+                    'success': False
+                })
+        
+        # Wait for background processing (5+ seconds)
+        print(f"\n   ⏳ Waiting 7 seconds for background mock transcription...")
+        time.sleep(7)
+        
+        # Check if candidates were processed
+        processed_count = 0
+        for result in upload_results:
+            if result['success'] and result['candidate_id']:
+                candidate_id = result['candidate_id']
+                lang_code = result['lang_code']
+                
+                # Fetch candidate to check if processed
+                success, candidates_data = self.test_api_endpoint(
+                    f"Check processing status - {lang_code}",
+                    "GET",
+                    "/nextapi/candidates"
+                )
+                
+                if success and 'candidates' in candidates_data:
+                    candidate = next((c for c in candidates_data['candidates'] if c['_id'] == candidate_id), None)
+                    
+                    if candidate:
+                        is_processed = candidate.get('moltbot_processed', False)
+                        has_name = bool(candidate.get('name', '').strip())
+                        has_summary = bool(candidate.get('professional_summary', '').strip())
+                        has_experience = candidate.get('experience_years', 0) > 0
+                        
+                        if is_processed and has_name and has_summary:
+                            processed_count += 1
+                            print(f"   ✅ Candidate {candidate_id} processed successfully")
+                            print(f"      Name: {candidate.get('name', 'N/A')}")
+                            print(f"      Experience: {candidate.get('experience_years', 0)} years")
+                            print(f"      Summary: {candidate.get('professional_summary', 'N/A')[:50]}...")
+                            
+                            self.log_test(f"Mock transcription processing - {lang_code}", True, 
+                                        f"Name: {candidate.get('name')}, Exp: {candidate.get('experience_years')}")
+                        else:
+                            print(f"   ❌ Candidate {candidate_id} not fully processed")
+                            self.log_test(f"Mock transcription processing - {lang_code}", False,
+                                        f"Processed: {is_processed}, Name: {has_name}, Summary: {has_summary}")
+                    else:
+                        print(f"   ❌ Candidate {candidate_id} not found")
+                        self.log_test(f"Mock transcription processing - {lang_code}", False, "Candidate not found")
+        
+        # Clean up
+        if os.path.exists(test_audio_path):
+            os.remove(test_audio_path)
+        
+        print(f"\n   📊 Processing Summary: {processed_count}/{len(upload_results)} candidates processed")
+        
+        return processed_count > 0
 
     def run_integration_tests(self):
         """Run integration tests"""
@@ -211,6 +331,9 @@ class GetLocalAPITester:
         self.test_wallet_api()
         self.test_jobs_api()
         self.test_upload_audio_api()
+        
+        # Test mock transcription flow (main feature)
+        self.test_mock_transcription_flow()
         
         # Run integration tests
         self.run_integration_tests()
