@@ -32,6 +32,14 @@ const MOCK_SUMMARIES = {
   ]
 };
 
+// Generate mock Indian phone number
+function generateMockPhone() {
+  const prefixes = ['98765', '99887', '97654', '96543', '95432', '94321', '93210', '92109'];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const suffix = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
+  return `+91 ${prefix} ${suffix}`;
+}
+
 // Background mock transcription processor
 async function processMockTranscription(candidateId, langCode) {
   console.log(`[MOLTBOT] Starting background mock transcription for ${candidateId} (lang: ${langCode})`);
@@ -56,13 +64,15 @@ async function processMockTranscription(candidateId, langCode) {
     const mockName = names[Math.floor(Math.random() * names.length)];
     const mockExperience = Math.floor(Math.random() * 8) + 1; // 1-8 years
     const mockSummary = summaries[Math.floor(Math.random() * summaries.length)];
+    const mockPhone = generateMockPhone(); // Generate mock phone number
     
-    // Update MongoDB with extracted data
+    // Update MongoDB with extracted data including phone
     await candidates.updateOne(
       { _id: candidateId },
       {
         $set: {
           name: mockName,
+          phone: mockPhone,
           experience_years: mockExperience,
           professional_summary: mockSummary,
           transcription: `[MOCK - ${langCode.toUpperCase()}] Auto-transcribed interview for ${mockName}`,
@@ -74,6 +84,7 @@ async function processMockTranscription(candidateId, langCode) {
     
     console.log(`[MOLTBOT] ✓ Successfully processed ${candidateId}`);
     console.log(`[MOLTBOT]   Name: ${mockName}`);
+    console.log(`[MOLTBOT]   Phone: ${mockPhone}`);
     console.log(`[MOLTBOT]   Experience: ${mockExperience} years`);
     console.log(`[MOLTBOT]   Summary: ${mockSummary.substring(0, 50)}...`);
     

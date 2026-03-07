@@ -17,8 +17,30 @@ function toRad(deg) {
 
 // Mask phone number for locked profiles
 export function maskPhone(phone) {
-  if (!phone || phone.length < 2) return '**********';
-  return '*******' + phone.slice(-2);
+  if (!phone || phone.length < 5) return '+91 ***** *****';
+  // Format: +91 98*** *****
+  const cleaned = phone.replace(/\s/g, '');
+  if (cleaned.startsWith('+91')) {
+    return `+91 ${cleaned.slice(3, 5)}*** *****`;
+  }
+  return `${phone.slice(0, 5)}** *****`;
+}
+
+// Calculate match score based on experience vs job requirement
+export function calculateMatchScore(candidateExperience, requiredExperience = 3) {
+  if (!candidateExperience || candidateExperience <= 0) return 50; // Base score
+  
+  const diff = Math.abs(candidateExperience - requiredExperience);
+  
+  // Perfect match or more experience = higher score
+  if (candidateExperience >= requiredExperience) {
+    // 85-98% for meeting or exceeding requirements
+    return Math.min(98, 85 + (candidateExperience - requiredExperience) * 3);
+  }
+  
+  // Less experience = lower score (but still viable)
+  // Score drops ~10% per year under requirement
+  return Math.max(40, 85 - diff * 15);
 }
 
 // Format distance for display

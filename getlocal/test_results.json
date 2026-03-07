@@ -3,122 +3,122 @@
     "total_tests": 19,
     "passed_tests": 19,
     "success_rate": 100.0,
-    "timestamp": "2026-03-07T21:15:59.939968"
+    "timestamp": "2026-03-07T21:25:46.651234"
   },
   "test_results": [
     {
       "test": "GET /nextapi/candidates",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:52.032338"
+      "timestamp": "2026-03-07T21:25:39.083389"
     },
     {
       "test": "GET /nextapi/wallet",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:52.041799"
+      "timestamp": "2026-03-07T21:25:39.091790"
     },
     {
       "test": "GET /nextapi/jobs",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:52.513982"
+      "timestamp": "2026-03-07T21:25:39.250714"
     },
     {
       "test": "POST /nextapi/upload-audio (no file)",
       "success": true,
       "details": "Status: 400",
-      "timestamp": "2026-03-07T21:15:52.678307"
+      "timestamp": "2026-03-07T21:25:39.369752"
     },
     {
       "test": "Audio upload - en",
       "success": true,
-      "details": "Candidate ID: ecf8856c-4231-421b-9e1d-2bb231f379c8",
-      "timestamp": "2026-03-07T21:15:52.720930"
+      "details": "Candidate ID: d33663c4-9bda-459e-ba5b-02699e10901a",
+      "timestamp": "2026-03-07T21:25:39.378654"
     },
     {
       "test": "Audio upload - hi",
       "success": true,
-      "details": "Candidate ID: d413acf0-701f-411f-94dd-78193ad491ba",
-      "timestamp": "2026-03-07T21:15:52.729471"
+      "details": "Candidate ID: eabaca69-407e-46c7-95cc-668e5eae7fac",
+      "timestamp": "2026-03-07T21:25:39.414454"
     },
     {
       "test": "Audio upload - te",
       "success": true,
-      "details": "Candidate ID: 3521f655-211e-4464-826e-044221982b08",
-      "timestamp": "2026-03-07T21:15:52.739225"
+      "details": "Candidate ID: 537797e6-6049-4589-8f80-0e4104e5ba24",
+      "timestamp": "2026-03-07T21:25:39.422911"
     },
     {
       "test": "Check processing status - en",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.746979"
+      "timestamp": "2026-03-07T21:25:46.448523"
     },
     {
       "test": "Mock transcription processing - en",
       "success": true,
-      "details": "Name: Meera Patel, Exp: 4",
-      "timestamp": "2026-03-07T21:15:59.747103"
+      "details": "Name: Sunita Devi, Exp: 7",
+      "timestamp": "2026-03-07T21:25:46.448650"
     },
     {
       "test": "Check processing status - hi",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.752421"
+      "timestamp": "2026-03-07T21:25:46.529539"
     },
     {
       "test": "Mock transcription processing - hi",
       "success": true,
-      "details": "Name: \u0905\u092e\u093f\u0924 \u0936\u0930\u094d\u092e\u093e, Exp: 3",
-      "timestamp": "2026-03-07T21:15:59.752527"
+      "details": "Name: \u0905\u092e\u093f\u0924 \u0936\u0930\u094d\u092e\u093e, Exp: 5",
+      "timestamp": "2026-03-07T21:25:46.529678"
     },
     {
       "test": "Check processing status - te",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.758010"
+      "timestamp": "2026-03-07T21:25:46.617308"
     },
     {
       "test": "Mock transcription processing - te",
       "success": true,
-      "details": "Name: \u0c2e\u0c40\u0c30\u0c3e \u0c2a\u0c1f\u0c47\u0c32\u0c4d, Exp: 3",
-      "timestamp": "2026-03-07T21:15:59.758099"
+      "details": "Name: \u0c05\u0c2e\u0c3f\u0c24\u0c4d \u0c36\u0c30\u0c4d\u0c2e, Exp: 1",
+      "timestamp": "2026-03-07T21:25:46.617455"
     },
     {
       "test": "GET /nextapi/wallet",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.766440"
+      "timestamp": "2026-03-07T21:25:46.625701"
     },
     {
       "test": "GET /nextapi/candidates",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.771944"
+      "timestamp": "2026-03-07T21:25:46.632604"
     },
     {
       "test": "POST /nextapi/unlock",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.931624"
+      "timestamp": "2026-03-07T21:25:46.644580"
     },
     {
       "test": "GET /nextapi/wallet",
       "success": true,
       "details": "Status: 200",
-      "timestamp": "2026-03-07T21:15:59.939853"
+      "timestamp": "2026-03-07T21:25:46.651128"
     },
     {
       "test": "Credit deduction verification",
       "success": true,
-      "details": "Expected: 90, Got: 90",
-      "timestamp": "2026-03-07T21:15:59.939937"
+      "details": "Expected: 80, Got: 80",
+      "timestamp": "2026-03-07T21:25:46.651205"
     },
     {
       "test": "Candidate unlock verification",
       "success": true,
-      "details": "Candidate 3521f655-211e-4464-826e-044221982b08 in unlocked list: True",
-      "timestamp": "2026-03-07T21:15:59.939944"
+      "details": "Candidate 537797e6-6049-4589-8f80-0e4104e5ba24 in unlocked list: True",
+      "timestamp": "2026-03-07T21:25:46.651211"
     }
   ]
 }

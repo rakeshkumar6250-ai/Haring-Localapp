@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { calculateDistance, maskPhone, formatDistance } from '@/lib/utils';
+import { calculateDistance, maskPhone, formatDistance, calculateMatchScore } from '@/lib/utils';
+
+// Job requirement for Smart Match (hardcoded for now)
+const JOB_REQUIREMENT_YEARS = 3;
 
 export default function HirePage() {
   const [candidates, setCandidates] = useState([]);
@@ -10,6 +13,7 @@ export default function HirePage() {
   const [distanceFilter, setDistanceFilter] = useState(20);
   const [userLocation, setUserLocation] = useState(null);
   const [unlockedIds, setUnlockedIds] = useState([]);
+  const [unlockedPhones, setUnlockedPhones] = useState({}); // Store unlocked phone numbers
   const [credits, setCredits] = useState(100);
   const [unlocking, setUnlocking] = useState(null);
   const [processing, setProcessing] = useState(null);
@@ -78,6 +82,10 @@ export default function HirePage() {
       if (res.ok) {
         setCredits(data.newBalance);
         setUnlockedIds(prev => [...prev, candidateId]);
+        // Store the revealed phone number
+        if (data.phone) {
+          setUnlockedPhones(prev => ({ ...prev, [candidateId]: data.phone }));
+        }
       } else {
         alert(data.error || 'Failed to unlock');
       }
@@ -188,6 +196,8 @@ export default function HirePage() {
             const isNew = candidate.created_at && 
               (new Date() - new Date(candidate.created_at)) < 60000;
             const isProcessed = candidate.moltbot_processed;
+            const matchScore = calculateMatchScore(candidate.experience_years, JOB_REQUIREMENT_YEARS);
+            const revealedPhone = unlockedPhones[candidate._id] || candidate.phone;
             
             return (
               <CandidateCard
@@ -196,6 +206,8 @@ export default function HirePage() {
                 isUnlocked={isUnlocked}
                 isNew={isNew}
                 isProcessed={isProcessed}
+                matchScore={matchScore}
+                revealedPhone={revealedPhone}
                 onUnlock={() => handleUnlock(candidate._id)}
                 onProcess={() => handleProcessAudio(candidate._id)}
                 unlocking={unlocking === candidate._id}
@@ -209,7 +221,7 @@ export default function HirePage() {
   );
 }
 
-function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, onProcess, unlocking, processing }) {
+function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, revealedPhone, onUnlock, onProcess, unlocking, processing }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -234,9 +246,9 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
     <div className={`candidate-card bg-[#151B2D] rounded-2xl p-4 border transition-all ${
       isNew ? 'border-[#36B37E] ring-2 ring-[#36B37E]/20' : 'border-white/5'
     }`} data-testid="candidate-card">
-      {/* Badges */}
+      {/* Badges Row */}
       <div className="flex justify-between items-center mb-2">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {isNew && (
             <span className="bg-[#36B37E] text-white text-xs px-2 py-1 rounded-full font-medium animate-pulse">
               NEW
@@ -253,9 +265,27 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 text-[#36B37E] text-sm font-medium" data-testid="candidate-distance">
-          <span>📍</span>
-          <span>{formatDistance(candidate.distance)}</span>
+        <div className="flex items-center gap-2">
+          {/* Smart Match Score */}
+          {isProcessed && matchScore > 0 && (
+            <div 
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                matchScore >= 85 ? 'bg-[#36B37E]/20 text-[#36B37E]' : 
+                matchScore >= 70 ? 'bg-amber-500/20 text-amber-400' : 
+                'bg-red-500/20 text-red-400'
+              }`}
+              data-testid="match-score"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+              </svg>
+              {matchScore}% Match
+            </div>
+          )}
+          <div className="flex items-center gap-1 text-[#36B37E] text-sm font-medium" data-testid="candidate-distance">
+            <span>📍</span>
+            <span>{formatDistance(candidate.distance)}</span>
+          </div>
         </div>
       </div>
 
@@ -419,17 +449,20 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, onUnlock, on
       )}
 
       {/* Contact Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-[#0A0F1C]/50 rounded-xl p-4 mt-4">
         <div>
-          <p className="text-[#8B95A5] text-sm">Phone</p>
-          <p className="font-mono text-lg" data-testid="candidate-phone">
-            {isUnlocked ? candidate.phone : maskPhone(candidate.phone)}
+          <p className="text-[#8B95A5] text-xs mb-1">Contact Number</p>
+          <p className={`font-mono text-lg ${isUnlocked ? 'text-[#36B37E]' : 'text-white/60'}`} data-testid="candidate-phone">
+            {isUnlocked ? revealedPhone : maskPhone(candidate.phone)}
           </p>
+          {!isUnlocked && (
+            <p className="text-xs text-[#8B95A5] mt-1">Unlock to reveal full number</p>
+          )}
         </div>
         
         {isUnlocked ? (
           <a
-            href={`tel:${candidate.phone}`}
+            href={`tel:${revealedPhone?.replace(/\s/g, '')}`}
             className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
             data-testid="call-btn"
           >
