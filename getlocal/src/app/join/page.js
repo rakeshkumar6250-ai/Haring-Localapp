@@ -269,15 +269,26 @@ export default function JoinPage() {
     try {
       setUploadProgress(10);
       
+      // Validate we have recordings
+      if (allRecordingsRef.current.length === 0) {
+        throw new Error('No recordings to upload');
+      }
+      
+      console.log('[CLIENT] Recordings to upload:', allRecordingsRef.current.length);
+      
       const allBlobs = allRecordingsRef.current.map(r => r.blob);
       const combinedBlob = new Blob(allBlobs, { type: 'audio/webm' });
       
+      console.log('[CLIENT] Combined blob size:', combinedBlob.size, 'bytes');
+      console.log('[CLIENT] Combined blob type:', combinedBlob.type);
+      
       setUploadProgress(30);
 
+      // Create FormData - DO NOT set Content-Type header manually
       const formData = new FormData();
       formData.append('audio', combinedBlob, 'interview.webm');
-      formData.append('language', currentLanguage);
-      formData.append('lang_code', currentLanguage);
+      formData.append('language', currentLanguage || 'en');
+      formData.append('lang_code', currentLanguage || 'en');
       formData.append('interview_type', 'structured_3q');
       formData.append('questions_answered', QUESTIONS.length.toString());
       
@@ -286,33 +297,42 @@ export default function JoinPage() {
         formData.append('lng', location.lng.toString());
       }
 
+      console.log('[CLIENT] FormData keys:', [...formData.keys()]);
+      
       setUploadProgress(50);
 
+      // Make request WITHOUT setting Content-Type (browser sets it with boundary)
+      console.log('[CLIENT] Sending upload request...');
       const res = await fetch('/api/upload-audio', {
         method: 'POST',
         body: formData,
+        // NOTE: Do NOT set Content-Type header - browser handles it for FormData
       });
 
+      console.log('[CLIENT] Response status:', res.status);
       setUploadProgress(80);
 
       const data = await res.json();
+      console.log('[CLIENT] Response data:', data);
 
       if (!res.ok) {
-        console.error('Upload failed:', data);
-        throw new Error(data.error || 'Upload failed');
+        console.error('[CLIENT] Upload failed:', data);
+        throw new Error(data.details || data.error || 'Upload failed');
       }
 
       setUploadProgress(100);
       setCandidateId(data.candidateId);
+      console.log('[CLIENT] Upload successful! Candidate ID:', data.candidateId);
       
-      // Auto-redirect after 3 seconds
+      // Auto-redirect after 1.5 seconds
       setTimeout(() => {
         setPhase('success');
       }, 1500);
 
     } catch (err) {
-      console.error('Upload error:', err);
-      setErrorMsg(err.message);
+      console.error('[CLIENT] Upload error:', err);
+      console.error('[CLIENT] Error stack:', err.stack);
+      setErrorMsg(err.message || 'Upload failed. Please try again.');
       setPhase('error');
     }
   };
