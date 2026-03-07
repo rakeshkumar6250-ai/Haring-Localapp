@@ -9,6 +9,9 @@ export async function POST(request) {
     const formData = await request.formData();
     const audioFile = formData.get('audio');
     const language = formData.get('language') || 'en';
+    const langCode = formData.get('lang_code') || language; // For translation model
+    const interviewType = formData.get('interview_type') || 'freeform';
+    const questionsAnswered = parseInt(formData.get('questions_answered')) || 0;
     const lat = parseFloat(formData.get('lat')) || 28.6139;
     const lng = parseFloat(formData.get('lng')) || 77.2090;
 
@@ -19,9 +22,9 @@ export async function POST(request) {
       );
     }
 
-    // Generate unique filename
+    // Generate unique filename with language tag
     const candidateId = uuidv4();
-    const fileName = `${candidateId}.webm`;
+    const fileName = `${candidateId}_lang-${langCode}.webm`;
     
     // Ensure audio directory exists
     const audioDir = path.join(process.cwd(), 'public', 'audio');
@@ -33,7 +36,7 @@ export async function POST(request) {
     const filePath = path.join(audioDir, fileName);
     await writeFile(filePath, buffer);
 
-    // Create candidate record in MongoDB
+    // Create candidate record in MongoDB with language metadata
     const candidates = await getCandidates();
     
     const candidate = {
@@ -43,7 +46,17 @@ export async function POST(request) {
       location: { lat, lng },
       role_category: 'General', // MoltBot will categorize
       audio_interview_url: `/audio/${fileName}`,
-      language,
+      
+      // Language metadata for translation model
+      language: language,
+      lang_code: langCode,
+      interview_metadata: {
+        type: interviewType,
+        questions_answered: questionsAnswered,
+        translation_model: getTranslationModel(langCode),
+        recorded_at: new Date()
+      },
+      
       is_verified: false,
       created_at: new Date(),
       transcription: null, // MoltBot will populate
@@ -53,13 +66,16 @@ export async function POST(request) {
     await candidates.insertOne(candidate);
 
     console.log(`[UPLOAD] Audio saved: ${fileName}`);
-    console.log(`[UPLOAD] Candidate created: ${candidateId}`);
+    console.log(`[UPLOAD] Language: ${langCode} | Translation Model: ${getTranslationModel(langCode)}`);
+    console.log(`[UPLOAD] Interview Type: ${interviewType} | Questions: ${questionsAnswered}`);
     console.log(`[MOLTBOT HOOK] Ready for processing: /audio/${fileName}`);
 
     return NextResponse.json({
       success: true,
       candidateId,
       audioUrl: `/audio/${fileName}`,
+      language: langCode,
+      translationModel: getTranslationModel(langCode),
       message: 'Audio uploaded successfully. AI Agent will process shortly.'
     }, { status: 201 });
 
@@ -70,6 +86,18 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+// Map language codes to appropriate translation/transcription models
+function getTranslationModel(langCode) {
+  const models = {
+    'en': 'whisper-large-v3',
+    'hi': 'whisper-large-v3-hindi',
+    'te': 'whisper-large-v3-telugu',
+    'ta': 'whisper-large-v3-tamil',
+    'default': 'whisper-large-v3'
+  };
+  return models[langCode] || models.default;
 }
 
 export const config = {
