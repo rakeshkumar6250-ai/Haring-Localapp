@@ -35,14 +35,13 @@ export async function POST(request) {
       required_experience, 
       location_radius,
       location,
-      // New fields
       salary,
       perks,
       training_provided,
-      job_expectations
+      job_expectations,
+      employer_location // NEW: string address for employer
     } = body;
 
-    // Validation
     if (!title || !category) {
       return NextResponse.json(
         { error: 'Title and category are required' },
@@ -59,11 +58,11 @@ export async function POST(request) {
       required_experience: parseInt(required_experience) || 0,
       location_radius: parseInt(location_radius) || 10,
       location: location || { lat: 28.6139, lng: 77.2090 },
-      // New fields
       salary: salary || null,
       perks: perks || [],
       training_provided: training_provided || false,
       job_expectations: job_expectations || '',
+      employer_location: employer_location || '', // NEW field
       status: 'active',
       is_active: true,
       created_at: new Date(),

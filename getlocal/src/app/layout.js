@@ -1,5 +1,6 @@
 import './globals.css';
 import BottomNav from '@/components/BottomNav';
+import ChatWidget from '@/components/ChatWidget';
 
 export const metadata = {
   title: 'GetLocal - Hire Local Talent',
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
           {children}
         </main>
         <BottomNav />
+        <ChatWidget />
       </body>
     </html>
   );

@@ -515,8 +515,309 @@ class GetLocalAPITester:
                         f"Candidate {candidate_id} in unlocked list: {is_unlocked}"
                     )
 
+    def test_support_tickets_api(self):
+        """Test support tickets API with requires_call field"""
+        print("\n🎫 Testing Support Tickets API...")
+        
+        # Test creating ticket without callback
+        ticket_data = {
+            "user_type": "candidate",
+            "phone_number": "+91 98765 43210",
+            "issue_description": "Cannot find relevant jobs in my area",
+        }
+        
+        success, response_data = self.test_api_endpoint(
+            "POST /nextapi/support-tickets (no callback)",
+            "POST",
+            "/nextapi/support-tickets",
+            expected_status=201,
+            data=ticket_data
+        )
+        
+        if success and 'ticket' in response_data:
+            ticket = response_data['ticket']
+            requires_call = ticket.get('requires_call', None)
+            
+            # Test default value of requires_call
+            self.log_test(
+                "Support ticket requires_call defaults to false",
+                requires_call is False,
+                f"requires_call: {requires_call}"
+            )
+        
+        # Test creating ticket WITH callback
+        callback_ticket_data = {
+            "user_type": "employer",
+            "phone_number": "+91 87654 32109", 
+            "issue_description": "Need help posting a job",
+            "requires_call": True
+        }
+        
+        success, response_data = self.test_api_endpoint(
+            "POST /nextapi/support-tickets (with callback)",
+            "POST",
+            "/nextapi/support-tickets",
+            expected_status=201,
+            data=callback_ticket_data
+        )
+        
+        if success and 'ticket' in response_data:
+            ticket = response_data['ticket']
+            requires_call = ticket.get('requires_call')
+            
+            self.log_test(
+                "Support ticket requires_call=true when specified",
+                requires_call is True,
+                f"requires_call: {requires_call}"
+            )
+            
+            return ticket.get('_id')
+        
+        # Test fetching tickets
+        success, tickets_data = self.test_api_endpoint(
+            "GET /nextapi/support-tickets",
+            "GET",
+            "/nextapi/support-tickets"
+        )
+        
+        if success:
+            tickets = tickets_data.get('tickets', [])
+            total = tickets_data.get('total', 0)
+            
+            self.log_test(
+                "Support tickets fetched successfully",
+                total > 0,
+                f"Found {total} tickets"
+            )
+        
+        return None
+
+    def test_report_noshow_api(self):
+        """Test report no-show API that deducts 10 from trust_score"""
+        print("\n📊 Testing Report No-Show API...")
+        
+        # First create a candidate to test with
+        candidate_id = self.test_manual_candidate_with_v2_fields()
+        
+        if not candidate_id:
+            self.log_test("Report no-show test", False, "Could not create test candidate")
+            return None
+        
+        # Get initial trust score
+        success, candidates_data = self.test_api_endpoint(
+            "Get candidate trust score",
+            "GET",
+            "/nextapi/candidates"
+        )
+        
+        initial_trust_score = None
+        if success and 'candidates' in candidates_data:
+            candidate = next((c for c in candidates_data['candidates'] if c['_id'] == candidate_id), None)
+            if candidate:
+                initial_trust_score = candidate.get('trust_score', 100)
+                
+                self.log_test(
+                    "Candidate trust_score verification", 
+                    initial_trust_score == 100,
+                    f"Initial trust score: {initial_trust_score}"
+                )
+        
+        # Report no-show
+        noshow_data = {
+            "candidateId": candidate_id,
+            "reason": "Did not show up for scheduled interview"
+        }
+        
+        success, response_data = self.test_api_endpoint(
+            "POST /nextapi/report-noshow",
+            "POST",
+            "/nextapi/report-noshow",
+            expected_status=200,
+            data=noshow_data
+        )
+        
+        if success:
+            previous_score = response_data.get('previousScore')
+            new_score = response_data.get('newScore')
+            
+            # Test score deduction
+            expected_new_score = max(0, initial_trust_score - 10)
+            score_deducted_correctly = new_score == expected_new_score
+            
+            self.log_test(
+                "Trust score deduction (10 points)",
+                score_deducted_correctly,
+                f"Previous: {previous_score}, New: {new_score}, Expected: {expected_new_score}"
+            )
+            
+            # Verify in database
+            success, updated_candidates_data = self.test_api_endpoint(
+                "Verify trust score in database",
+                "GET",
+                "/nextapi/candidates"
+            )
+            
+            if success and 'candidates' in updated_candidates_data:
+                updated_candidate = next((c for c in updated_candidates_data['candidates'] if c['_id'] == candidate_id), None)
+                if updated_candidate:
+                    db_trust_score = updated_candidate.get('trust_score')
+                    
+                    self.log_test(
+                        "Trust score persisted in database",
+                        db_trust_score == new_score,
+                        f"DB trust score: {db_trust_score}"
+                    )
+        
+        return candidate_id
+
+    def test_phase_1_schema_fields(self):
+        """Test Phase 1: DB schema fields"""
+        print("\n📋 Testing Phase 1: DB Schema Fields...")
+        
+        # Test candidate schema fields (trust_score, address, will_relocate)
+        candidate_id = self.test_manual_candidate_with_v2_fields()
+        
+        if candidate_id:
+            success, candidates_data = self.test_api_endpoint(
+                "Verify candidate schema fields",
+                "GET", 
+                "/nextapi/candidates"
+            )
+            
+            if success and 'candidates' in candidates_data:
+                candidate = next((c for c in candidates_data['candidates'] if c['_id'] == candidate_id), None)
+                
+                if candidate:
+                    # Check trust_score = 100 (default)
+                    trust_score = candidate.get('trust_score')
+                    self.log_test(
+                        "Candidate trust_score = 100 (default)",
+                        trust_score == 100,
+                        f"trust_score: {trust_score}"
+                    )
+                    
+                    # Check address field
+                    address = candidate.get('address')
+                    self.log_test(
+                        "Candidate has address field",
+                        address is not None and address.strip() != '',
+                        f"address: '{address}'"
+                    )
+                    
+                    # Check will_relocate field 
+                    will_relocate = candidate.get('will_relocate')
+                    self.log_test(
+                        "Candidate has will_relocate field",
+                        will_relocate is not None,
+                        f"will_relocate: {will_relocate}"
+                    )
+        
+        # Test job schema fields (perks, training_provided, employer_location)
+        job_id = self.test_job_posting_with_v2_fields()
+        
+        if job_id:
+            success, jobs_data = self.test_api_endpoint(
+                "Verify job schema fields",
+                "GET",
+                "/nextapi/jobs"
+            )
+            
+            if success and 'jobs' in jobs_data:
+                job = next((j for j in jobs_data['jobs'] if j['_id'] == job_id), None)
+                
+                if job:
+                    # Check perks array
+                    perks = job.get('perks', [])
+                    self.log_test(
+                        "Job has perks array",
+                        isinstance(perks, list) and len(perks) > 0,
+                        f"perks: {perks}"
+                    )
+                    
+                    # Check training_provided boolean
+                    training_provided = job.get('training_provided')
+                    self.log_test(
+                        "Job has training_provided boolean",
+                        isinstance(training_provided, bool),
+                        f"training_provided: {training_provided}"
+                    )
+                    
+                    # Check employer_location field
+                    employer_location = job.get('employer_location')
+                    self.log_test(
+                        "Job has employer_location field", 
+                        employer_location is not None,
+                        f"employer_location: '{employer_location}'"
+                    )
+
+    def test_phase_2_languages(self):
+        """Test Phase 2: 9 languages support"""
+        print("\n🌍 Testing Phase 2: Language Support...")
+        
+        # Test language metadata for ml, bn, ta
+        languages_to_test = ['ml', 'bn', 'ta']  # Malayalam, Bengali, Tamil
+        
+        for lang_code in languages_to_test:
+            print(f"   Testing language metadata for: {lang_code}")
+            
+            # Create manual candidate with specific language
+            import tempfile
+            test_audio_path = '/tmp/manual_lang_test.webm'
+            with open(test_audio_path, 'wb') as f:
+                f.write(b'empty')
+            
+            try:
+                import requests
+                url = f"{self.base_url}/nextapi/upload-audio"
+                
+                with open(test_audio_path, 'rb') as audio_file:
+                    files = {'audio': ('manual.webm', audio_file, 'audio/webm')}
+                    data = {
+                        'interview_type': 'manual',
+                        'extracted_name': f'Test Candidate {lang_code.upper()}',
+                        'extracted_role': 'General',
+                        'language': lang_code,
+                        'lang_code': lang_code,
+                        'address': f'Test Address {lang_code}',
+                        'will_relocate': 'false'
+                    }
+                    
+                    response = requests.post(url, files=files, data=data, timeout=15)
+                    
+                    if response.status_code == 201:
+                        result = response.json()
+                        candidate_id = result.get('candidateId')
+                        
+                        # Verify language was saved correctly
+                        success, candidates_data = self.test_api_endpoint(
+                            f"Verify language metadata for {lang_code}",
+                            "GET",
+                            "/nextapi/candidates"
+                        )
+                        
+                        if success and 'candidates' in candidates_data:
+                            candidate = next((c for c in candidates_data['candidates'] if c['_id'] == candidate_id), None)
+                            
+                            if candidate:
+                                saved_lang = candidate.get('lang_code')
+                                saved_language = candidate.get('language')
+                                
+                                self.log_test(
+                                    f"Language metadata saved correctly for {lang_code}",
+                                    saved_lang == lang_code and saved_language == lang_code,
+                                    f"lang_code: {saved_lang}, language: {saved_language}"
+                                )
+                    else:
+                        self.log_test(f"Language test for {lang_code}", False, f"Upload failed: {response.status_code}")
+                        
+            except Exception as e:
+                self.log_test(f"Language test for {lang_code}", False, f"Error: {str(e)}")
+            finally:
+                if os.path.exists(test_audio_path):
+                    os.remove(test_audio_path)
+
     def run_all_tests(self):
-        """Run all API tests"""
+        """Run all API tests including GetLocal V2 Phase 1-5 tests"""
         print("🚀 Starting GetLocal V2 API Tests...")
         print(f"Testing against: {self.base_url}")
         
@@ -525,6 +826,19 @@ class GetLocalAPITester:
         self.test_wallet_api()
         self.test_jobs_api()
         self.test_upload_audio_api()
+        
+        # === GETLOCAL V2 PHASE TESTS ===
+        print("\n🆕 === GETLOCAL V2 PHASE 1-5 TESTS ===")
+        
+        # Phase 1: DB Schema tests
+        self.test_phase_1_schema_fields()
+        
+        # Phase 2: Languages tests  
+        self.test_phase_2_languages()
+        
+        # Phase 3 & 4: Additional API tests
+        self.test_support_tickets_api()
+        self.test_report_noshow_api()
         
         # Test V2 specific features
         print("\n🆕 === GETLOCAL V2 FEATURE TESTS ===")

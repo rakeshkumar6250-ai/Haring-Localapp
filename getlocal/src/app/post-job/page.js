@@ -29,14 +29,14 @@ export default function PostJobPage() {
     category: '',
     required_experience: 0,
     location_radius: 10,
-    // New fields
-    salary_type: 'fixed', // 'fixed' or 'range'
+    salary_type: 'fixed',
     salary_fixed: '',
     salary_min: '',
     salary_max: '',
     perks: [],
     training_provided: false,
-    job_expectations: ''
+    job_expectations: '',
+    employer_location: '' // NEW: Employer address/area
   });
 
   useEffect(() => {
@@ -91,11 +91,11 @@ export default function PostJobPage() {
           required_experience: parseInt(formData.required_experience),
           location_radius: parseInt(formData.location_radius),
           location: userLocation,
-          // New fields
           salary: salaryData,
           perks: formData.perks,
           training_provided: formData.training_provided,
-          job_expectations: formData.job_expectations.trim()
+          job_expectations: formData.job_expectations.trim(),
+          employer_location: formData.employer_location.trim()
         }),
       });
 
@@ -388,6 +388,22 @@ export default function PostJobPage() {
             className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-[#8B95A5]/50 resize-none"
             data-testid="job-expectations-input"
           />
+        </div>
+
+        {/* Employer Location */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-[#8B95A5]">
+            Your Business Location
+          </label>
+          <input
+            type="text"
+            value={formData.employer_location}
+            onChange={(e) => handleChange('employer_location', e.target.value)}
+            placeholder="e.g., Connaught Place, Delhi or Koramangala, Bangalore"
+            className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-4 text-white placeholder-[#8B95A5]/50 focus:border-[#0052CC] transition-all"
+            data-testid="employer-location-input"
+          />
+          <p className="text-xs text-[#8B95A5]">This will be shown to candidates for commute planning</p>
         </div>
 
         {/* Preview Card */}

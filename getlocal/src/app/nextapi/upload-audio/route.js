@@ -4,11 +4,19 @@ import { writeFile, mkdir, access, constants } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
-// Mock data for automatic transcription processing
+// Mock data for automatic transcription processing - EXPANDED for regional languages
 const MOCK_NAMES = {
   en: ['Rajesh Kumar', 'Priya Singh', 'Amit Sharma', 'Sunita Devi', 'Vikram Yadav', 'Meera Patel'],
   hi: ['राजेश कुमार', 'प्रिया सिंह', 'अमित शर्मा', 'सुनीता देवी', 'विक्रम यादव', 'मीरा पटेल'],
-  te: ['రాజేష్ కుమార్', 'ప్రియ సింగ్', 'అమిత్ శర్మ', 'సునీత దేవి', 'విక్రమ్ యాదవ్', 'మీరా పటేల్']
+  te: ['రాజేష్ కుమార్', 'ప్రియ సింగ్', 'అమిత్ శర్మ', 'సునీత దేవి', 'విక్రమ్ యాదవ్', 'మీరా పటేల్'],
+  // South India
+  ta: ['ராஜேஷ் குமார்', 'பிரியா சிங்', 'அமித் சர்மா', 'சுனிதா தேவி', 'விக்ரம் யாதவ்', 'மீரா பட்டேல்'],
+  kn: ['ರಾಜೇಶ್ ಕುಮಾರ್', 'ಪ್ರಿಯಾ ಸಿಂಗ್', 'ಅಮಿತ್ ಶರ್ಮಾ', 'ಸುನೀತಾ ದೇವಿ', 'ವಿಕ್ರಮ್ ಯಾದವ್', 'ಮೀರಾ ಪಟೇಲ್'],
+  ml: ['രാജേഷ് കുമാർ', 'പ്രിയ സിംഗ്', 'അമിത് ശർമ്മ', 'സുനിത ദേവി', 'വിക്രം യാദവ്', 'മീര പട്ടേൽ'],
+  // East India
+  bn: ['রাজেশ কুমার', 'প্রিয়া সিং', 'অমিত শর্মা', 'সুনীতা দেবী', 'বিক্রম যাদব', 'মীরা প্যাটেল'],
+  or: ['ରାଜେଶ କୁମାର', 'ପ୍ରିୟା ସିଂ', 'ଅମିତ ଶର୍ମା', 'ସୁନୀତା ଦେବୀ', 'ବିକ୍ରମ ଯାଦବ', 'ମୀରା ପଟେଲ'],
+  as: ['ৰাজেশ কুমাৰ', 'প্ৰিয়া সিং', 'অমিত শৰ্মা', 'সুনীতা দেৱী', 'বিক্ৰম যাদৱ', 'মীৰা পেটেল']
 };
 
 const MOCK_SUMMARIES = {
@@ -29,7 +37,14 @@ const MOCK_SUMMARIES = {
     'కస్టమర్-ఫేసింగ్ పాత్రల్లో నిరూపితమైన ట్రాక్ రికార్డ్ ఉన్న అంకితభావంతో పనిచేసే వ్యక్తి.',
     'సర్వీస్ ఇండస్ట్రీలో అనుభవం ఉన్న నైపుణ్యం కలిగిన అభ్యర్థి.',
     'స్థిరమైన ఉద్యోగం కోరుతున్న నమ్మకమైన వృత్తి నిపుణుడు.'
-  ]
+  ],
+  // Default English summaries for other languages
+  ta: ['அனுபவமுள்ள நிபுணர். வீட்டு மற்றும் வணிக சூழலில் பணிபுரிந்துள்ளார்.', 'நம்பகமான பணியாளர். சரியான நேரத்தில் வருவதில் புகழ்பெற்றவர்.'],
+  kn: ['ಅನುಭವಿ ವೃತ್ತಿಪರ. ಬಹು ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಕೆಲಸ ಮಾಡಿದ್ದಾರೆ.', 'ನಂಬಿಗಸ್ತ ಕೆಲಸಗಾರ. ಸಮಯಪಾಲನೆಗೆ ಹೆಸರಾಗಿದ್ದಾರೆ.'],
+  ml: ['അനുഭവസമ്പന്നനായ പ്രൊഫഷണൽ. വീട്, വാണിജ്യ സെറ്റിംഗുകളിൽ ജോലി ചെയ്തിട്ടുണ്ട്.', 'വിശ്വസനീയമായ തൊഴിലാളി.'],
+  bn: ['অভিজ্ঞ পেশাদার। একাধিক সেটিংসে কাজ করেছেন।', 'নির্ভরযোগ্য কর্মী। সময়ানুবর্তিতার জন্য পরিচিত।'],
+  or: ['ଅଭିଜ୍ଞ ବୃତ୍ତିଜୀବୀ। ଅନେକ ସେଟିଂସରେ କାମ କରିଛନ୍ତି।', 'ନିର୍ଭରଯୋଗ୍ୟ କର୍ମଚାରୀ।'],
+  as: ['অভিজ্ঞ পেছাদাৰ। একাধিক ছেটিংছত কাম কৰিছে।', 'নিৰ্ভৰযোগ্য কৰ্মী।']
 };
 
 // Generate mock Indian phone number
@@ -239,6 +254,7 @@ export async function POST(request) {
         location: { lat, lng },
         address: address,
         will_relocate: willRelocate,
+        trust_score: 100, // NEW: Default trust score
         role_category: extractedRole || 'General',
         audio_interview_url: isManualEntry ? null : `/audio/${fileName}`,
         language: language,
@@ -253,8 +269,7 @@ export async function POST(request) {
         is_verified: false,
         created_at: new Date(),
         transcription: isManualEntry ? `Manual entry by ${extractedName}` : null,
-        moltbot_processed: isManualEntry, // Manual entries are pre-processed
-        // For manual entries, set these directly
+        moltbot_processed: isManualEntry,
         experience_years: isManualEntry && extractedExperience ? parseInt(extractedExperience) : 0,
         professional_summary: isManualEntry && extractedSummary ? extractedSummary : null,
       };

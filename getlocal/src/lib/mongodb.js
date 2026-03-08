@@ -32,4 +32,10 @@ export async function getWallets() {
   return db.collection('wallets');
 }
 
+// NEW: Support Tickets collection
+export async function getSupportTickets() {
+  const db = await getDb();
+  return db.collection('support_tickets');
+}
+
 export default clientPromise;

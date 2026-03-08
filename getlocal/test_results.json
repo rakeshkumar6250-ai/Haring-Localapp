@@ -1,112 +1,412 @@
 {
   "summary": {
-    "total_tests": 17,
-    "passed_tests": 5,
-    "success_rate": 29.4,
-    "timestamp": "2026-03-08T13:00:57.849315"
+    "total_tests": 67,
+    "passed_tests": 67,
+    "success_rate": 100.0,
+    "timestamp": "2026-03-08T13:26:13.259065"
   },
   "test_results": [
     {
       "test": "GET /nextapi/candidates",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:49.904965"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:04.642343"
     },
     {
       "test": "GET /nextapi/wallet",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:50.095455"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:04.649299"
     },
     {
       "test": "GET /nextapi/jobs",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:50.489474"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:04.655714"
     },
     {
       "test": "POST /nextapi/upload-audio (no file)",
       "success": true,
       "details": "Status: 400",
-      "timestamp": "2026-03-08T13:00:50.705155"
+      "timestamp": "2026-03-08T13:26:05.255504"
     },
     {
       "test": "Manual candidate creation with V2 fields",
       "success": true,
-      "details": "Candidate ID: 7302fa0f-973e-4dda-b832-f890d10ebcab",
-      "timestamp": "2026-03-08T13:00:50.715070"
+      "details": "Candidate ID: c267e40e-2cfd-451e-844d-f736b4311016",
+      "timestamp": "2026-03-08T13:26:05.265233"
     },
     {
       "test": "Check V2 fields in candidate",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:50.729359"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.271914"
     },
     {
-      "test": "Manual candidate V2 verification",
-      "success": false,
-      "details": "Failed to fetch candidates",
-      "timestamp": "2026-03-08T13:00:50.729424"
+      "test": "V2 fields verification - address",
+      "success": true,
+      "details": "Address: Test Address, Delhi 110001",
+      "timestamp": "2026-03-08T13:26:05.272076"
+    },
+    {
+      "test": "V2 fields verification - will_relocate",
+      "success": true,
+      "details": "Will relocate: True",
+      "timestamp": "2026-03-08T13:26:05.272084"
+    },
+    {
+      "test": "Verify candidate schema fields",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.282246"
+    },
+    {
+      "test": "Candidate trust_score = 100 (default)",
+      "success": true,
+      "details": "trust_score: 100",
+      "timestamp": "2026-03-08T13:26:05.282416"
+    },
+    {
+      "test": "Candidate has address field",
+      "success": true,
+      "details": "address: 'Test Address, Delhi 110001'",
+      "timestamp": "2026-03-08T13:26:05.282421"
+    },
+    {
+      "test": "Candidate has will_relocate field",
+      "success": true,
+      "details": "will_relocate: True",
+      "timestamp": "2026-03-08T13:26:05.282426"
     },
     {
       "test": "POST /nextapi/jobs with V2 fields",
-      "success": false,
-      "details": "Status: 500, Expected: 201, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:50.740170"
+      "success": true,
+      "details": "Status: 201",
+      "timestamp": "2026-03-08T13:26:05.288663"
+    },
+    {
+      "test": "V2 job fields verification - salary",
+      "success": true,
+      "details": "Salary: {'type': 'fixed', 'amount': 25000, 'display': '\u20b925,000/month'}",
+      "timestamp": "2026-03-08T13:26:05.288747"
+    },
+    {
+      "test": "V2 job fields verification - perks",
+      "success": true,
+      "details": "Perks: ['meals', 'transport', 'pf_esi']",
+      "timestamp": "2026-03-08T13:26:05.288752"
+    },
+    {
+      "test": "V2 job fields verification - training",
+      "success": true,
+      "details": "Training: True",
+      "timestamp": "2026-03-08T13:26:05.288756"
+    },
+    {
+      "test": "V2 job fields verification - expectations",
+      "success": true,
+      "details": "Expectations length: 89",
+      "timestamp": "2026-03-08T13:26:05.288759"
+    },
+    {
+      "test": "Verify job schema fields",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.293971"
+    },
+    {
+      "test": "Job has perks array",
+      "success": true,
+      "details": "perks: ['meals', 'transport', 'pf_esi']",
+      "timestamp": "2026-03-08T13:26:05.294064"
+    },
+    {
+      "test": "Job has training_provided boolean",
+      "success": true,
+      "details": "training_provided: True",
+      "timestamp": "2026-03-08T13:26:05.294070"
+    },
+    {
+      "test": "Job has employer_location field",
+      "success": true,
+      "details": "employer_location: ''",
+      "timestamp": "2026-03-08T13:26:05.294073"
+    },
+    {
+      "test": "Verify language metadata for ml",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.307798"
+    },
+    {
+      "test": "Language metadata saved correctly for ml",
+      "success": true,
+      "details": "lang_code: ml, language: ml",
+      "timestamp": "2026-03-08T13:26:05.307963"
+    },
+    {
+      "test": "Verify language metadata for bn",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.320238"
+    },
+    {
+      "test": "Language metadata saved correctly for bn",
+      "success": true,
+      "details": "lang_code: bn, language: bn",
+      "timestamp": "2026-03-08T13:26:05.320410"
+    },
+    {
+      "test": "Verify language metadata for ta",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.362201"
+    },
+    {
+      "test": "Language metadata saved correctly for ta",
+      "success": true,
+      "details": "lang_code: ta, language: ta",
+      "timestamp": "2026-03-08T13:26:05.362389"
+    },
+    {
+      "test": "POST /nextapi/support-tickets (no callback)",
+      "success": true,
+      "details": "Status: 201",
+      "timestamp": "2026-03-08T13:26:05.577383"
+    },
+    {
+      "test": "Support ticket requires_call defaults to false",
+      "success": true,
+      "details": "requires_call: False",
+      "timestamp": "2026-03-08T13:26:05.577471"
+    },
+    {
+      "test": "POST /nextapi/support-tickets (with callback)",
+      "success": true,
+      "details": "Status: 201",
+      "timestamp": "2026-03-08T13:26:05.582678"
+    },
+    {
+      "test": "Support ticket requires_call=true when specified",
+      "success": true,
+      "details": "requires_call: True",
+      "timestamp": "2026-03-08T13:26:05.582738"
+    },
+    {
+      "test": "Manual candidate creation with V2 fields",
+      "success": true,
+      "details": "Candidate ID: ed1b4656-d8b7-492b-b9c7-3d68505f600d",
+      "timestamp": "2026-03-08T13:26:05.592859"
+    },
+    {
+      "test": "Check V2 fields in candidate",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.599057"
+    },
+    {
+      "test": "V2 fields verification - address",
+      "success": true,
+      "details": "Address: Test Address, Delhi 110001",
+      "timestamp": "2026-03-08T13:26:05.599236"
+    },
+    {
+      "test": "V2 fields verification - will_relocate",
+      "success": true,
+      "details": "Will relocate: True",
+      "timestamp": "2026-03-08T13:26:05.599242"
+    },
+    {
+      "test": "Get candidate trust score",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.605102"
+    },
+    {
+      "test": "Candidate trust_score verification",
+      "success": true,
+      "details": "Initial trust score: 100",
+      "timestamp": "2026-03-08T13:26:05.605268"
+    },
+    {
+      "test": "POST /nextapi/report-noshow",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:05.992951"
+    },
+    {
+      "test": "Trust score deduction (10 points)",
+      "success": true,
+      "details": "Previous: 100, New: 90, Expected: 90",
+      "timestamp": "2026-03-08T13:26:05.993040"
+    },
+    {
+      "test": "Verify trust score in database",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:06.001503"
+    },
+    {
+      "test": "Trust score persisted in database",
+      "success": true,
+      "details": "DB trust score: 90",
+      "timestamp": "2026-03-08T13:26:06.001686"
+    },
+    {
+      "test": "Manual candidate creation with V2 fields",
+      "success": true,
+      "details": "Candidate ID: d8339cdd-3a89-4c7a-b55d-67f0787c79bc",
+      "timestamp": "2026-03-08T13:26:06.013145"
+    },
+    {
+      "test": "Check V2 fields in candidate",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:06.018830"
+    },
+    {
+      "test": "V2 fields verification - address",
+      "success": true,
+      "details": "Address: Test Address, Delhi 110001",
+      "timestamp": "2026-03-08T13:26:06.019011"
+    },
+    {
+      "test": "V2 fields verification - will_relocate",
+      "success": true,
+      "details": "Will relocate: True",
+      "timestamp": "2026-03-08T13:26:06.019017"
+    },
+    {
+      "test": "POST /nextapi/jobs with V2 fields",
+      "success": true,
+      "details": "Status: 201",
+      "timestamp": "2026-03-08T13:26:06.025691"
+    },
+    {
+      "test": "V2 job fields verification - salary",
+      "success": true,
+      "details": "Salary: {'type': 'fixed', 'amount': 25000, 'display': '\u20b925,000/month'}",
+      "timestamp": "2026-03-08T13:26:06.025777"
+    },
+    {
+      "test": "V2 job fields verification - perks",
+      "success": true,
+      "details": "Perks: ['meals', 'transport', 'pf_esi']",
+      "timestamp": "2026-03-08T13:26:06.025783"
+    },
+    {
+      "test": "V2 job fields verification - training",
+      "success": true,
+      "details": "Training: True",
+      "timestamp": "2026-03-08T13:26:06.025787"
+    },
+    {
+      "test": "V2 job fields verification - expectations",
+      "success": true,
+      "details": "Expectations length: 89",
+      "timestamp": "2026-03-08T13:26:06.025790"
     },
     {
       "test": "POST /nextapi/jobs with salary range",
-      "success": false,
-      "details": "Status: 500, Expected: 201, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:50.749991"
+      "success": true,
+      "details": "Status: 201",
+      "timestamp": "2026-03-08T13:26:06.030638"
+    },
+    {
+      "test": "Salary range verification",
+      "success": true,
+      "details": "Salary: {'type': 'range', 'min': 15000, 'max': 20000, 'display': '\u20b915,000 - \u20b920,000/month'}",
+      "timestamp": "2026-03-08T13:26:06.030704"
     },
     {
       "test": "Audio upload - en",
       "success": true,
-      "details": "Candidate ID: 4bf7fc41-692a-4c1f-ad50-3cc7b8add3a7",
-      "timestamp": "2026-03-08T13:00:50.781693"
+      "details": "Candidate ID: 269c7520-cc41-4754-8d11-eeb82755ccd0",
+      "timestamp": "2026-03-08T13:26:06.037337"
     },
     {
       "test": "Audio upload - hi",
       "success": true,
-      "details": "Candidate ID: 7c21957b-8df8-40c6-b001-79a6c1bea7d5",
-      "timestamp": "2026-03-08T13:00:50.789114"
+      "details": "Candidate ID: b57d9209-cf00-48e2-bf43-c0a6d1073e74",
+      "timestamp": "2026-03-08T13:26:06.061956"
     },
     {
       "test": "Audio upload - te",
       "success": true,
-      "details": "Candidate ID: 32adfdc3-f88b-4ba7-bc4f-9b37cf1af46f",
-      "timestamp": "2026-03-08T13:00:50.796085"
+      "details": "Candidate ID: 48c461bd-825b-4ecc-b09b-62b6d5bc491b",
+      "timestamp": "2026-03-08T13:26:06.068322"
     },
     {
       "test": "Check processing status - en",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:57.806798"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.075621"
+    },
+    {
+      "test": "Mock transcription processing - en",
+      "success": true,
+      "details": "Name: Priya Singh, Exp: 8",
+      "timestamp": "2026-03-08T13:26:13.075856"
     },
     {
       "test": "Check processing status - hi",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:57.816540"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.081480"
+    },
+    {
+      "test": "Mock transcription processing - hi",
+      "success": true,
+      "details": "Name: \u0930\u093e\u091c\u0947\u0936 \u0915\u0941\u092e\u093e\u0930, Exp: 1",
+      "timestamp": "2026-03-08T13:26:13.081685"
     },
     {
       "test": "Check processing status - te",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:57.826585"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.087984"
+    },
+    {
+      "test": "Mock transcription processing - te",
+      "success": true,
+      "details": "Name: \u0c35\u0c3f\u0c15\u0c4d\u0c30\u0c2e\u0c4d \u0c2f\u0c3e\u0c26\u0c35\u0c4d, Exp: 1",
+      "timestamp": "2026-03-08T13:26:13.088180"
     },
     {
       "test": "GET /nextapi/wallet",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:57.836838"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.093896"
     },
     {
       "test": "GET /nextapi/candidates",
-      "success": false,
-      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
-      "timestamp": "2026-03-08T13:00:57.849225"
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.100391"
+    },
+    {
+      "test": "POST /nextapi/unlock",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.234311"
+    },
+    {
+      "test": "GET /nextapi/wallet",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-03-08T13:26:13.258931"
+    },
+    {
+      "test": "Credit deduction verification",
+      "success": true,
+      "details": "Expected: 80, Got: 80",
+      "timestamp": "2026-03-08T13:26:13.259017"
+    },
+    {
+      "test": "Candidate unlock verification",
+      "success": true,
+      "details": "Candidate 48c461bd-825b-4ecc-b09b-62b6d5bc491b in unlocked list: True",
+      "timestamp": "2026-03-08T13:26:13.259023"
     }
   ]
 }

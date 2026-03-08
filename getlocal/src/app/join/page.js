@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Interview questions in multiple languages
+// Interview questions in multiple languages - EXPANDED for regional support
 const INTERVIEW_SCRIPTS = {
   en: {
     name: 'English',
+    region: 'Universal',
     voiceLang: 'en-US',
     prompts: {
       selectLanguage: 'Welcome to GetLocal. Please select your language.',
@@ -22,6 +23,7 @@ const INTERVIEW_SCRIPTS = {
   },
   hi: {
     name: 'हिंदी',
+    region: 'North India',
     voiceLang: 'hi-IN',
     prompts: {
       selectLanguage: 'GetLocal में आपका स्वागत है।',
@@ -37,6 +39,7 @@ const INTERVIEW_SCRIPTS = {
   },
   te: {
     name: 'తెలుగు',
+    region: 'South India',
     voiceLang: 'te-IN',
     prompts: {
       selectLanguage: 'GetLocal కి స్వాగతం.',
@@ -48,6 +51,104 @@ const INTERVIEW_SCRIPTS = {
       confirmation3: 'ధన్యవాదాలు!',
       processing: 'ప్రొఫైల్ సృష్టించబడుతోంది...',
       recording: 'రికార్డింగ్.',
+    }
+  },
+  // NEW: South India Languages
+  ta: {
+    name: 'தமிழ்',
+    region: 'South India',
+    voiceLang: 'ta-IN',
+    prompts: {
+      selectLanguage: 'GetLocal-க்கு வரவேற்கிறோம்.',
+      question1: 'உங்கள் முழு பெயரை சொல்லுங்கள்.',
+      question2: 'நீங்கள் என்ன வேலை தேடுகிறீர்கள்?',
+      question3: 'உங்களுக்கு எத்தனை வருட அனுபவம் உள்ளது?',
+      confirmation1: 'புரிந்தது! அடுத்த கேள்வி.',
+      confirmation2: 'சரி! கடைசி கேள்வி.',
+      confirmation3: 'நன்றி!',
+      processing: 'சுயவிவரம் உருவாக்கப்படுகிறது...',
+      recording: 'பதிவு செய்கிறது.',
+    }
+  },
+  kn: {
+    name: 'ಕನ್ನಡ',
+    region: 'South India',
+    voiceLang: 'kn-IN',
+    prompts: {
+      selectLanguage: 'GetLocal ಗೆ ಸ್ವಾಗತ.',
+      question1: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರು ಹೇಳಿ.',
+      question2: 'ನೀವು ಯಾವ ಕೆಲಸ ಹುಡುಕುತ್ತಿದ್ದೀರಿ?',
+      question3: 'ನಿಮಗೆ ಎಷ್ಟು ವರ್ಷಗಳ ಅನುಭವ ಇದೆ?',
+      confirmation1: 'ಅರ್ಥವಾಯಿತು! ಮುಂದಿನ ಪ್ರಶ್ನೆ.',
+      confirmation2: 'ಸರಿ! ಕೊನೆಯ ಪ್ರಶ್ನೆ.',
+      confirmation3: 'ಧನ್ಯವಾದಗಳು!',
+      processing: 'ಪ್ರೊಫೈಲ್ ರಚಿಸಲಾಗುತ್ತಿದೆ...',
+      recording: 'ರೆಕಾರ್ಡ್ ಆಗುತ್ತಿದೆ.',
+    }
+  },
+  ml: {
+    name: 'മലയാളം',
+    region: 'South India',
+    voiceLang: 'ml-IN',
+    prompts: {
+      selectLanguage: 'GetLocal-ലേക്ക് സ്വാഗതം.',
+      question1: 'നിങ്ങളുടെ മുഴുവൻ പേര് പറയുക.',
+      question2: 'നിങ്ങൾ എന്ത് ജോലി തിരയുന്നു?',
+      question3: 'നിങ്ങൾക്ക് എത്ര വർഷത്തെ അനുഭവമുണ്ട്?',
+      confirmation1: 'മനസ്സിലായി! അടുത്ത ചോദ്യം.',
+      confirmation2: 'ശരി! അവസാന ചോദ്യം.',
+      confirmation3: 'നന്ദി!',
+      processing: 'പ്രൊഫൈൽ നിർമ്മിക്കുന്നു...',
+      recording: 'റെക്കോർഡ് ചെയ്യുന്നു.',
+    }
+  },
+  // NEW: East India Languages
+  bn: {
+    name: 'বাংলা',
+    region: 'East India',
+    voiceLang: 'bn-IN',
+    prompts: {
+      selectLanguage: 'GetLocal-এ স্বাগতম.',
+      question1: 'আপনার পুরো নাম বলুন।',
+      question2: 'আপনি কি ধরনের কাজ খুঁজছেন?',
+      question3: 'আপনার কত বছরের অভিজ্ঞতা আছে?',
+      confirmation1: 'বুঝেছি! পরবর্তী প্রশ্ন।',
+      confirmation2: 'ঠিক আছে! শেষ প্রশ্ন।',
+      confirmation3: 'ধন্যবাদ!',
+      processing: 'প্রোফাইল তৈরি হচ্ছে...',
+      recording: 'রেকর্ডিং হচ্ছে।',
+    }
+  },
+  or: {
+    name: 'ଓଡ଼ିଆ',
+    region: 'East India',
+    voiceLang: 'or-IN',
+    prompts: {
+      selectLanguage: 'GetLocal କୁ ସ୍ୱାଗତ.',
+      question1: 'ଆପଣଙ୍କ ପୂରା ନାମ କୁହନ୍ତୁ।',
+      question2: 'ଆପଣ କେଉଁ କାମ ଖୋଜୁଛନ୍ତି?',
+      question3: 'ଆପଣଙ୍କର କେତେ ବର୍ଷର ଅନୁଭବ ଅଛି?',
+      confirmation1: 'ବୁଝିଗଲି! ପରବର୍ତ୍ତୀ ପ୍ରଶ୍ନ।',
+      confirmation2: 'ଠିକ୍! ଶେଷ ପ୍ରଶ୍ନ।',
+      confirmation3: 'ଧନ୍ୟବାଦ!',
+      processing: 'ପ୍ରୋଫାଇଲ୍ ତିଆରି ହେଉଛି...',
+      recording: 'ରେକର୍ଡିଂ ହେଉଛି।',
+    }
+  },
+  as: {
+    name: 'অসমীয়া',
+    region: 'East India',
+    voiceLang: 'as-IN',
+    prompts: {
+      selectLanguage: 'GetLocal-লৈ স্বাগতম.',
+      question1: 'আপোনাৰ সম্পূৰ্ণ নাম কওক।',
+      question2: 'আপুনি কি ধৰণৰ কাম বিচাৰিছে?',
+      question3: 'আপোনাৰ কিমান বছৰৰ অভিজ্ঞতা আছে?',
+      confirmation1: 'বুজিলোঁ! পিছৰ প্ৰশ্ন।',
+      confirmation2: 'ঠিক আছে! শেষ প্ৰশ্ন।',
+      confirmation3: 'ধন্যবাদ!',
+      processing: 'প্ৰ\'ফাইল তৈয়াৰ হৈ আছে...',
+      recording: 'ৰেকৰ্ডিং হৈ আছে।',
     }
   }
 };

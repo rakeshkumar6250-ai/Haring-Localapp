@@ -8,7 +8,7 @@ export default function HirePage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
-  const [activeJob, setActiveJob] = useState(undefined); // undefined = not loaded, null = show all
+  const [activeJob, setActiveJob] = useState(undefined);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('');
   const [distanceFilter, setDistanceFilter] = useState(20);
@@ -19,6 +19,8 @@ export default function HirePage() {
   const [unlocking, setUnlocking] = useState(null);
   const [processing, setProcessing] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [reportingNoShow, setReportingNoShow] = useState(null);
+  const [trustScores, setTrustScores] = useState({}); // Track trust scores locally
 
   // Get user location
   useEffect(() => {
@@ -144,7 +146,6 @@ export default function HirePage() {
 
       const data = await res.json();
       if (res.ok) {
-        // Refresh candidates to show updated info
         await fetchCandidates();
         alert(`Profile processed! Name: ${data.extracted?.name || 'Unknown'}`);
       } else {
@@ -156,6 +157,45 @@ export default function HirePage() {
     } finally {
       setProcessing(null);
     }
+  };
+
+  // Report No-Show - Anti-Ghosting Feature
+  const handleReportNoShow = async (candidateId) => {
+    if (!confirm('Are you sure you want to report this candidate as a no-show? This will affect their trust score.')) {
+      return;
+    }
+    
+    setReportingNoShow(candidateId);
+    try {
+      const res = await fetch('/nextapi/report-noshow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId, reason: 'No-show for scheduled interview' }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // Update local trust score
+        setTrustScores(prev => ({ ...prev, [candidateId]: data.newScore }));
+        alert(`Reported. Trust score updated: ${data.previousScore} → ${data.newScore}`);
+        await fetchCandidates();
+      } else {
+        alert(data.error || 'Failed to report');
+      }
+    } catch (err) {
+      console.error('Report error:', err);
+    } finally {
+      setReportingNoShow(null);
+    }
+  };
+
+  // Generate WhatsApp invite link
+  const getWhatsAppLink = (phone, candidateName) => {
+    const jobTitle = activeJob?.title || 'a position';
+    const location = activeJob?.employer_location || 'our office';
+    const message = `Hello ${candidateName}, I saw your profile on GetLocal. I am hiring for ${jobTitle}. Can you come for an interview? Location: ${location}`;
+    const cleanPhone = phone?.replace(/\s/g, '').replace('+', '');
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
 
   // Filter candidates based on active job or manual filters
@@ -322,6 +362,8 @@ export default function HirePage() {
             const matchScore = calculateMatchScore(candidate.experience_years, jobExpRequirement);
             const revealedPhone = unlockedPhones[candidate._id] || candidate.phone;
             
+            const trustScore = trustScores[candidate._id] ?? candidate.trust_score ?? 100;
+            
             return (
               <CandidateCard
                 key={candidate._id}
@@ -330,11 +372,15 @@ export default function HirePage() {
                 isNew={isNew}
                 isProcessed={isProcessed}
                 matchScore={matchScore}
+                trustScore={trustScore}
                 revealedPhone={revealedPhone}
+                whatsappLink={getWhatsAppLink(revealedPhone, candidate.name)}
                 onUnlock={() => handleUnlock(candidate._id)}
                 onProcess={() => handleProcessAudio(candidate._id)}
+                onReportNoShow={() => handleReportNoShow(candidate._id)}
                 unlocking={unlocking === candidate._id}
                 processing={processing === candidate._id}
+                reportingNoShow={reportingNoShow === candidate._id}
               />
             );
           })
@@ -344,10 +390,17 @@ export default function HirePage() {
   );
 }
 
-function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, revealedPhone, onUnlock, onProcess, unlocking, processing }) {
+function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, trustScore, revealedPhone, whatsappLink, onUnlock, onProcess, onReportNoShow, unlocking, processing, reportingNoShow }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Trust Score color
+  const getTrustScoreColor = (score) => {
+    if (score >= 90) return 'bg-[#36B37E]/20 text-[#36B37E]';
+    if (score >= 70) return 'bg-amber-500/20 text-amber-400';
+    return 'bg-red-500/20 text-red-400';
+  };
 
   const togglePlay = () => {
     if (!candidate.audio_interview_url) return;
@@ -389,6 +442,19 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Trust Score Badge */}
+          {trustScore !== undefined && (
+            <div 
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${getTrustScoreColor(trustScore)}`}
+              data-testid="trust-score"
+              title="Trust Score"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              {trustScore}%
+            </div>
+          )}
           {/* Smart Match Score */}
           {isProcessed && matchScore > 0 && (
             <div 
@@ -592,49 +658,99 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
       )}
 
       {/* Contact Section */}
-      <div className="flex items-center justify-between bg-[#0A0F1C]/50 rounded-xl p-4 mt-4">
-        <div>
-          <p className="text-[#8B95A5] text-xs mb-1">Contact Number</p>
-          <p className={`font-mono text-lg ${isUnlocked ? 'text-[#36B37E]' : 'text-white/60'}`} data-testid="candidate-phone">
-            {isUnlocked ? revealedPhone : maskPhone(candidate.phone)}
-          </p>
+      <div className="bg-[#0A0F1C]/50 rounded-xl p-4 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[#8B95A5] text-xs mb-1">Contact Number</p>
+            <p className={`font-mono text-lg ${isUnlocked ? 'text-[#36B37E]' : 'text-white/60'}`} data-testid="candidate-phone">
+              {isUnlocked ? revealedPhone : maskPhone(candidate.phone)}
+            </p>
+            {!isUnlocked && (
+              <p className="text-xs text-[#8B95A5] mt-1">Unlock to reveal full number</p>
+            )}
+          </div>
+          
           {!isUnlocked && (
-            <p className="text-xs text-[#8B95A5] mt-1">Unlock to reveal full number</p>
+            <button
+              onClick={onUnlock}
+              disabled={unlocking}
+              className="bg-[#0052CC] hover:bg-[#003d99] disabled:bg-gray-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
+              data-testid="unlock-btn"
+            >
+              {unlocking ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
+                  </svg>
+                  Unlocking...
+                </span>
+              ) : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  Unlock (10 💰)
+                </>
+              )}
+            </button>
           )}
         </div>
         
-        {isUnlocked ? (
-          <a
-            href={`tel:${revealedPhone?.replace(/\s/g, '')}`}
-            className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
-            data-testid="call-btn"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            Call Now
-          </a>
-        ) : (
+        {/* Unlocked: Action buttons */}
+        {isUnlocked && (
+          <div className="flex gap-2">
+            {/* Call Button */}
+            <a
+              href={`tel:${revealedPhone?.replace(/\s/g, '')}`}
+              className="flex-1 bg-[#36B37E] hover:bg-[#2d9a6a] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+              data-testid="call-btn"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              Call
+            </a>
+            
+            {/* WhatsApp Invite Button */}
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 bg-[#25D366] hover:bg-[#1da851] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+              data-testid="whatsapp-btn"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              WhatsApp
+            </a>
+          </div>
+        )}
+        
+        {/* Report No-Show Button (only for unlocked profiles) */}
+        {isUnlocked && (
           <button
-            onClick={onUnlock}
-            disabled={unlocking}
-            className="bg-[#0052CC] hover:bg-[#003d99] disabled:bg-gray-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
-            data-testid="unlock-btn"
+            onClick={onReportNoShow}
+            disabled={reportingNoShow}
+            className="w-full mt-3 bg-transparent border border-red-500/30 text-red-400 font-medium py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-red-500/10 transition-all text-sm"
+            data-testid="report-noshow-btn"
           >
-            {unlocking ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {reportingNoShow ? (
+              <>
+                <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
                 </svg>
-                Unlocking...
-              </span>
+                Reporting...
+              </>
             ) : (
               <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="15" y1="9" x2="9" y2="15"/>
+                  <line x1="9" y1="9" x2="15" y2="15"/>
                 </svg>
-                Unlock (10 💰)
+                Report No-Show
               </>
             )}
           </button>
