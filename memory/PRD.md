@@ -11,113 +11,114 @@ Voice-first blue-collar hiring platform that enables workers to create audio-bas
 ## Core User Flows
 
 ### Job Seeker Flow (/join)
-1. Record voice interview in preferred language (en/hi/te)
-2. Audio uploaded to server
-3. AI processes and extracts profile data (name, phone, experience, summary)
+1. Choose entry mode: Voice Record or Fill Form Manually
+2. **Voice Mode**: Answer 3 voice questions, then add location details
+3. **Manual Mode**: Fill form with Name, Role, Experience, Summary
+4. Both modes require: Address/Pincode + Relocation preference
+5. Profile created and visible to employers
 
 ### Employer Flow
-1. **Post Job** (/post-job): Create job with title, category, experience, radius
-2. **Find Candidates** (/hire): View filtered candidates matching job requirements
+1. **Post Job** (/post-job): Create detailed job posting
+2. **Find Candidates** (/hire): View filtered candidates with address & relocation info
 3. **Unlock & Contact**: Pay credits to reveal phone numbers
 
 ## What's Been Implemented
 
-### Session 3: March 8, 2026
-- [x] **Job Posting Flow** (/post-job):
-  - Clean form UI with Job Title, Category grid (11 options), Experience slider, Radius slider
-  - Real-time job preview card
-  - Saves to MongoDB jobs collection
-  - Redirects to /hire on success
+### Session 4: March 8, 2026 - Data Capture Upgrades
 
-- [x] **Hire Page Integration**:
-  - "Your Active Jobs" selector in header
-  - Auto-filters candidates by job's category (search bar)
-  - Auto-sets distance slider to job's location_radius
-  - Dynamic Match Score based on job's required_experience
-  - Filter banner showing active job details
-  - "Show All" button to reset filters
-  - "Post Job" button in header
+**Part 1: Candidate Onboarding (/join)**
+- [x] Voice/Manual Toggle: "🎤 Record Voice" vs "✍️ Fill Form"
+- [x] Manual Form Fields: Name, Work Type, Experience, Summary
+- [x] Common Fields (both modes): Current Address/Pincode (required), Willing to Relocate toggle
+- [x] MongoDB schema updated: `address`, `will_relocate` fields
 
-### Session 2: March 7, 2026
-- [x] Phone Number Extraction (mock)
-- [x] Credit Unlock Loop (10 credits, reveal phone)
-- [x] Smart Match Feature (color-coded scores)
+**Part 2: Employer Job Posting (/post-job)**
+- [x] Salary Offered: Fixed Monthly or Salary Range toggle
+- [x] Perks Multi-select: Free Meals, Accommodation, PF/ESI, Transport, Uniform, Bonus
+- [x] Training Provided toggle
+- [x] Job Expectations textarea
+- [x] MongoDB jobs schema updated with all new fields
 
-### Session 1: March 7, 2026
-- [x] Mock Transcription Flow
-- [x] Language-aware mock data
-- [x] Hire Page UI with AI Summary
+**Part 3: UI Sync (/hire)**
+- [x] Address displayed on candidate cards with location icon
+- [x] Relocation badge: "✓ Will Relocate" (green) or "✗ Won't Relocate"
+
+### Previous Sessions
+- Session 3: Job Posting Flow, Dynamic Filters, Job Selector
+- Session 2: Phone Extraction, Credit Unlock Loop, Smart Match
+- Session 1: Mock Transcription, Language-aware Data, AI Summary
 
 ## API Routes
 | Route | Method | Purpose |
 |-------|--------|---------|
-| /nextapi/jobs | GET | List all jobs with categories |
-| /nextapi/jobs | POST | Create new job posting |
-| /nextapi/jobs | PATCH | Update job status (activate/pause) |
-| /nextapi/jobs | DELETE | Delete job |
-| /nextapi/upload-audio | POST | Upload audio, trigger processing |
-| /nextapi/candidates | GET | List all candidates |
+| /nextapi/jobs | GET/POST/PATCH/DELETE | Job CRUD with V2 fields |
+| /nextapi/upload-audio | POST | Upload audio OR create manual profile |
+| /nextapi/candidates | GET | List all candidates with V2 data |
 | /nextapi/wallet | GET/POST | Get balance / Add credits |
 | /nextapi/unlock | POST | Unlock candidate (10 credits) |
 
 ## Database Schemas
 
-### jobs collection
-```javascript
-{
-  _id: string,
-  title: string,
-  category: string,           // Driver, Cook, Delivery, etc.
-  required_experience: number, // 0-10 years
-  location_radius: number,     // 1-50 km
-  location: { lat, lng },
-  status: "active" | "paused",
-  is_active: boolean,
-  created_at: Date,
-  updated_at: Date
-}
-```
-
-### candidates collection
+### candidates collection (V2)
 ```javascript
 {
   _id: string,
   name: string,
   phone: string,
+  location: { lat, lng },
+  address: string,              // NEW: Address or pincode
+  will_relocate: boolean,       // NEW: Relocation preference
   role_category: string,
   experience_years: number,
   professional_summary: string,
-  audio_interview_url: string,
+  audio_interview_url: string | null,
   lang_code: string,
+  interview_metadata: {
+    type: "structured_3q" | "manual",
+    // ...
+  },
   moltbot_processed: boolean,
-  location: { lat, lng },
   created_at: Date
 }
 ```
 
-### wallets collection
+### jobs collection (V2)
 ```javascript
 {
-  user_id: string,
-  credit_balance: number,
-  unlocked_candidates: string[],
+  _id: string,
+  title: string,
+  category: string,
+  required_experience: number,
+  location_radius: number,
+  location: { lat, lng },
+  salary: {                     // NEW
+    type: "fixed" | "range",
+    amount?: number,
+    min?: number,
+    max?: number,
+    display: string
+  },
+  perks: string[],              // NEW: ["meals", "accommodation", "pf_esi", ...]
+  training_provided: boolean,   // NEW
+  job_expectations: string,     // NEW
+  status: "active" | "paused",
+  is_active: boolean,
   created_at: Date
 }
 ```
 
-## Job Categories
-Driver, Cook, Delivery, Security Guard, House Helper, Electrician, Plumber, Carpenter, Cleaner, Gardener, General
+## Job Perks Options
+| ID | Label | Icon |
+|----|-------|------|
+| meals | Free Meals | 🍽️ |
+| accommodation | Accommodation | 🏠 |
+| pf_esi | PF/ESI | 🏥 |
+| transport | Transport | 🚌 |
+| uniform | Uniform Provided | 👔 |
+| bonus | Performance Bonus | 💰 |
 
-## Match Score Algorithm
-```javascript
-function calculateMatchScore(candidateExp, jobRequiredExp) {
-  if (candidateExp >= jobRequiredExp) {
-    return Math.min(98, 85 + (candidateExp - jobRequiredExp) * 3);
-  }
-  return Math.max(40, 85 - Math.abs(candidateExp - jobRequiredExp) * 15);
-}
-// Green >= 85%, Amber 70-84%, Red < 70%
-```
+## Job Categories
+Driver, Cook, Delivery, Security Guard, House Helper, Electrician, Plumber, Carpenter, Cleaner, Cashier, General
 
 ## Prioritized Backlog
 
@@ -128,16 +129,16 @@ function calculateMatchScore(candidateExp, jobRequiredExp) {
 ### P1 - High Priority  
 - [ ] Employer authentication
 - [ ] SMS verification for candidates
-- [ ] Job edit/delete from employer dashboard
-- [ ] Multiple job management
+- [ ] Job management dashboard (edit/delete/pause)
+- [ ] Search candidates by address/pincode
 
 ### P2 - Nice to Have
-- [ ] Push notifications when new matching candidate
-- [ ] WhatsApp integration for contact
-- [ ] Employer analytics dashboard
-- [ ] Bulk unlock discounts
+- [ ] Push notifications
+- [ ] WhatsApp integration
+- [ ] Employer analytics
+- [ ] Advanced salary filtering
 
 ## Next Tasks
-1. Integrate payment gateway for credit purchases
-2. Add employer authentication flow
-3. Implement job management (edit/delete)
+1. Add payment gateway for credit purchases
+2. Implement employer authentication
+3. Build job management dashboard
