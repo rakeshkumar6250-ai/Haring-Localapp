@@ -93,3 +93,13 @@ body {
 .blasting {
   animation: blast 0.3s ease-in-out infinite;
 }
+
+/* Hide scrollbar for job selector */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

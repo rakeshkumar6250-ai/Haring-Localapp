@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { calculateDistance, maskPhone, formatDistance, calculateMatchScore } from '@/lib/utils';
 
-// Job requirement for Smart Match (hardcoded for now)
-const JOB_REQUIREMENT_YEARS = 3;
-
 export default function HirePage() {
+  const router = useRouter();
   const [candidates, setCandidates] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [activeJob, setActiveJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('');
   const [distanceFilter, setDistanceFilter] = useState(20);
   const [userLocation, setUserLocation] = useState(null);
   const [unlockedIds, setUnlockedIds] = useState([]);
-  const [unlockedPhones, setUnlockedPhones] = useState({}); // Store unlocked phone numbers
+  const [unlockedPhones, setUnlockedPhones] = useState({});
   const [credits, setCredits] = useState(100);
   const [unlocking, setUnlocking] = useState(null);
   const [processing, setProcessing] = useState(null);
@@ -28,6 +29,26 @@ export default function HirePage() {
       );
     }
   }, []);
+
+  // Fetch jobs
+  const fetchJobs = useCallback(async () => {
+    try {
+      const res = await fetch('/nextapi/jobs');
+      const data = await res.json();
+      const activeJobs = (data.jobs || []).filter(j => j.is_active);
+      setJobs(activeJobs);
+      
+      // Auto-select most recent active job if none selected
+      if (activeJobs.length > 0 && !activeJob) {
+        const latest = activeJobs[0];
+        setActiveJob(latest);
+        setRoleFilter(latest.category || '');
+        setDistanceFilter(latest.location_radius || 20);
+      }
+    } catch (err) {
+      console.error('Failed to fetch jobs:', err);
+    }
+  }, [activeJob]);
 
   // Fetch candidates with auto-refresh
   const fetchCandidates = useCallback(async () => {
@@ -58,11 +79,26 @@ export default function HirePage() {
   }, []);
 
   useEffect(() => {
+    fetchJobs();
     fetchCandidates();
     fetchCredits();
     const interval = setInterval(fetchCandidates, 10000);
     return () => clearInterval(interval);
-  }, [fetchCandidates, fetchCredits]);
+  }, [fetchJobs, fetchCandidates, fetchCredits]);
+
+  // Handle job selection
+  const handleJobSelect = (job) => {
+    setActiveJob(job);
+    setRoleFilter(job.category || '');
+    setDistanceFilter(job.location_radius || 20);
+  };
+
+  // Handle show all (reset filters)
+  const handleShowAll = () => {
+    setActiveJob(null);
+    setRoleFilter('');
+    setDistanceFilter(20);
+  };
 
   const handleUnlock = async (candidateId) => {
     if (credits < 10) {
@@ -122,7 +158,9 @@ export default function HirePage() {
     }
   };
 
-  // Filter candidates
+  // Filter candidates based on active job or manual filters
+  const jobExpRequirement = activeJob?.required_experience || 3;
+  
   const filteredCandidates = candidates
     .map(c => {
       if (!userLocation || !c.location) return { ...c, distance: 999 };
@@ -149,11 +187,82 @@ export default function HirePage() {
               </p>
             )}
           </div>
-          <div className="bg-[#36B37E]/20 text-[#36B37E] px-3 py-1 rounded-full text-sm font-medium" data-testid="credit-balance">
-            💰 {credits} credits
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push('/post-job')}
+              className="bg-[#0052CC] hover:bg-[#003d99] text-white px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1 transition-all"
+              data-testid="post-job-btn"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Post Job
+            </button>
+            <div className="bg-[#36B37E]/20 text-[#36B37E] px-3 py-1.5 rounded-full text-sm font-medium" data-testid="credit-balance">
+              💰 {credits}
+            </div>
           </div>
         </div>
 
+        {/* Active Jobs Selector */}
+        {jobs.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs text-[#8B95A5] mb-2">Your Active Jobs:</p>
+            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              {jobs.map((job) => (
+                <button
+                  key={job._id}
+                  onClick={() => handleJobSelect(job)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                    activeJob?._id === job._id
+                      ? 'bg-[#0052CC] text-white'
+                      : 'bg-[#151B2D] text-[#8B95A5] hover:bg-[#1E2740]'
+                  }`}
+                  data-testid={`job-filter-${job._id}`}
+                >
+                  {job.title.length > 20 ? job.title.slice(0, 20) + '...' : job.title}
+                </button>
+              ))}
+              <button
+                onClick={handleShowAll}
+                className={`flex-shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                  !activeJob
+                    ? 'bg-[#36B37E] text-white'
+                    : 'bg-[#151B2D] text-[#8B95A5] hover:bg-[#1E2740]'
+                }`}
+                data-testid="show-all-btn"
+              >
+                Show All
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active Job Info Banner */}
+        {activeJob && (
+          <div className="bg-[#0052CC]/10 border border-[#0052CC]/30 rounded-xl p-3 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[#0052CC] text-xs font-medium">Filtering for:</p>
+                <p className="text-white font-semibold">{activeJob.title}</p>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="bg-[#0052CC]/30 text-[#0052CC] px-2 py-1 rounded-full">
+                  {activeJob.category}
+                </span>
+                <span className="bg-[#36B37E]/20 text-[#36B37E] px-2 py-1 rounded-full">
+                  {activeJob.required_experience}+ yrs
+                </span>
+                <span className="bg-[#8B95A5]/20 text-[#8B95A5] px-2 py-1 rounded-full">
+                  {activeJob.location_radius} km
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filters */}
         <input
           type="text"
           placeholder="Search by role (Driver, Helper, Cook...)"
@@ -168,7 +277,7 @@ export default function HirePage() {
           <input
             type="range"
             min="1"
-            max="20"
+            max="50"
             value={distanceFilter}
             onChange={(e) => setDistanceFilter(Number(e.target.value))}
             className="flex-1 accent-[#0052CC]"
@@ -187,8 +296,22 @@ export default function HirePage() {
           </div>
         ) : filteredCandidates.length === 0 ? (
           <div className="text-center py-12">
+            <div className="w-16 h-16 bg-[#151B2D] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8B95A5" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
             <p className="text-[#8B95A5] mb-2">No candidates found</p>
-            <p className="text-sm text-[#8B95A5]">Try increasing the distance</p>
+            <p className="text-sm text-[#8B95A5] mb-4">Try adjusting the filters or distance</p>
+            {jobs.length === 0 && (
+              <button
+                onClick={() => router.push('/post-job')}
+                className="bg-[#0052CC] text-white px-4 py-2 rounded-xl text-sm font-medium"
+              >
+                Post Your First Job
+              </button>
+            )}
           </div>
         ) : (
           filteredCandidates.map((candidate) => {
@@ -196,7 +319,7 @@ export default function HirePage() {
             const isNew = candidate.created_at && 
               (new Date() - new Date(candidate.created_at)) < 60000;
             const isProcessed = candidate.moltbot_processed;
-            const matchScore = calculateMatchScore(candidate.experience_years, JOB_REQUIREMENT_YEARS);
+            const matchScore = calculateMatchScore(candidate.experience_years, jobExpRequirement);
             const revealedPhone = unlockedPhones[candidate._id] || candidate.phone;
             
             return (
