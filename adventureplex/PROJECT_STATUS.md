@@ -54,7 +54,7 @@ All four phases have been implemented:
 
 ### Live Preview URL
 ```
-https://eloquent-galileo.preview.emergentagent.com
+https://hire-nearby-5.preview.emergentagent.com
 ```
 
 ### Key Routes
