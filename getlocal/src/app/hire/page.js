@@ -8,7 +8,7 @@ export default function HirePage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
-  const [activeJob, setActiveJob] = useState(null);
+  const [activeJob, setActiveJob] = useState(undefined); // undefined = not loaded, null = show all
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('');
   const [distanceFilter, setDistanceFilter] = useState(20);
@@ -38,8 +38,8 @@ export default function HirePage() {
       const activeJobs = (data.jobs || []).filter(j => j.is_active);
       setJobs(activeJobs);
       
-      // Auto-select most recent active job if none selected
-      if (activeJobs.length > 0 && !activeJob) {
+      // Auto-select most recent active job only on first load (when activeJob is undefined)
+      if (activeJobs.length > 0 && activeJob === undefined) {
         const latest = activeJobs[0];
         setActiveJob(latest);
         setRoleFilter(latest.category || '');
