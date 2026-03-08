@@ -171,9 +171,13 @@ export async function POST(request) {
     const lng = parseFloat(formData.get('lng')) || 77.2090;
     const extractedName = formData.get('extracted_name') || null;
     const extractedRole = formData.get('extracted_role') || null;
+    const extractedExperience = formData.get('extracted_experience') || null;
+    const extractedSummary = formData.get('extracted_summary') || null;
+    const address = formData.get('address') || '';
+    const willRelocate = formData.get('will_relocate') === 'true';
     
     console.log('[UPLOAD] Metadata:', JSON.stringify({ 
-      langCode, interviewType, questionsAnswered, lat, lng 
+      langCode, interviewType, questionsAnswered, lat, lng, address, willRelocate 
     }, null, 2));
 
     // Step 5: Generate filename and save file
@@ -222,13 +226,21 @@ export async function POST(request) {
     try {
       const candidates = await getCandidates();
       
+      // For manual entries, use extracted data directly
+      const isManualEntry = interviewType === 'manual';
+      
+      // Generate mock phone for manual entries too
+      const mockPhone = isManualEntry ? generateMockPhone() : '';
+      
       const candidate = {
         _id: candidateId,
         name: extractedName || `Candidate ${candidateId.slice(0, 6)}`,
-        phone: '',
+        phone: mockPhone,
         location: { lat, lng },
+        address: address,
+        will_relocate: willRelocate,
         role_category: extractedRole || 'General',
-        audio_interview_url: `/audio/${fileName}`,
+        audio_interview_url: isManualEntry ? null : `/audio/${fileName}`,
         language: language,
         lang_code: langCode,
         interview_metadata: {
@@ -240,8 +252,11 @@ export async function POST(request) {
         },
         is_verified: false,
         created_at: new Date(),
-        transcription: null,
-        moltbot_processed: false
+        transcription: isManualEntry ? `Manual entry by ${extractedName}` : null,
+        moltbot_processed: isManualEntry, // Manual entries are pre-processed
+        // For manual entries, set these directly
+        experience_years: isManualEntry && extractedExperience ? parseInt(extractedExperience) : 0,
+        professional_summary: isManualEntry && extractedSummary ? extractedSummary : null,
       };
 
       await candidates.insertOne(candidate);
@@ -265,10 +280,15 @@ export async function POST(request) {
     console.log(`[MOLTBOT HOOK] Ready for processing: /audio/${fileName}`);
     
     // Trigger background mock transcription (non-blocking)
-    processMockTranscription(candidateId, langCode).catch(err => {
-      console.error('[MOLTBOT] Background processing error:', err.message);
-    });
-    console.log(`[MOLTBOT] Background transcription queued for ${candidateId}`);
+    // Only trigger background processing for voice interviews (not manual entries)
+    if (interviewType !== 'manual') {
+      processMockTranscription(candidateId, langCode).catch(err => {
+        console.error('[MOLTBOT] Background processing error:', err.message);
+      });
+      console.log(`[MOLTBOT] Background transcription queued for ${candidateId}`);
+    } else {
+      console.log(`[MOLTBOT] Skipping background processing for manual entry: ${candidateId}`);
+    }
 
     return NextResponse.json({
       success: true,

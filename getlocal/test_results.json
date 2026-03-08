@@ -1,124 +1,112 @@
 {
   "summary": {
-    "total_tests": 19,
-    "passed_tests": 19,
-    "success_rate": 100.0,
-    "timestamp": "2026-03-07T21:25:46.651234"
+    "total_tests": 17,
+    "passed_tests": 5,
+    "success_rate": 29.4,
+    "timestamp": "2026-03-08T13:00:57.849315"
   },
   "test_results": [
     {
       "test": "GET /nextapi/candidates",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:39.083389"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:49.904965"
     },
     {
       "test": "GET /nextapi/wallet",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:39.091790"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:50.095455"
     },
     {
       "test": "GET /nextapi/jobs",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:39.250714"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:50.489474"
     },
     {
       "test": "POST /nextapi/upload-audio (no file)",
       "success": true,
       "details": "Status: 400",
-      "timestamp": "2026-03-07T21:25:39.369752"
+      "timestamp": "2026-03-08T13:00:50.705155"
+    },
+    {
+      "test": "Manual candidate creation with V2 fields",
+      "success": true,
+      "details": "Candidate ID: 7302fa0f-973e-4dda-b832-f890d10ebcab",
+      "timestamp": "2026-03-08T13:00:50.715070"
+    },
+    {
+      "test": "Check V2 fields in candidate",
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:50.729359"
+    },
+    {
+      "test": "Manual candidate V2 verification",
+      "success": false,
+      "details": "Failed to fetch candidates",
+      "timestamp": "2026-03-08T13:00:50.729424"
+    },
+    {
+      "test": "POST /nextapi/jobs with V2 fields",
+      "success": false,
+      "details": "Status: 500, Expected: 201, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:50.740170"
+    },
+    {
+      "test": "POST /nextapi/jobs with salary range",
+      "success": false,
+      "details": "Status: 500, Expected: 201, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:50.749991"
     },
     {
       "test": "Audio upload - en",
       "success": true,
-      "details": "Candidate ID: d33663c4-9bda-459e-ba5b-02699e10901a",
-      "timestamp": "2026-03-07T21:25:39.378654"
+      "details": "Candidate ID: 4bf7fc41-692a-4c1f-ad50-3cc7b8add3a7",
+      "timestamp": "2026-03-08T13:00:50.781693"
     },
     {
       "test": "Audio upload - hi",
       "success": true,
-      "details": "Candidate ID: eabaca69-407e-46c7-95cc-668e5eae7fac",
-      "timestamp": "2026-03-07T21:25:39.414454"
+      "details": "Candidate ID: 7c21957b-8df8-40c6-b001-79a6c1bea7d5",
+      "timestamp": "2026-03-08T13:00:50.789114"
     },
     {
       "test": "Audio upload - te",
       "success": true,
-      "details": "Candidate ID: 537797e6-6049-4589-8f80-0e4104e5ba24",
-      "timestamp": "2026-03-07T21:25:39.422911"
+      "details": "Candidate ID: 32adfdc3-f88b-4ba7-bc4f-9b37cf1af46f",
+      "timestamp": "2026-03-08T13:00:50.796085"
     },
     {
       "test": "Check processing status - en",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.448523"
-    },
-    {
-      "test": "Mock transcription processing - en",
-      "success": true,
-      "details": "Name: Sunita Devi, Exp: 7",
-      "timestamp": "2026-03-07T21:25:46.448650"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:57.806798"
     },
     {
       "test": "Check processing status - hi",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.529539"
-    },
-    {
-      "test": "Mock transcription processing - hi",
-      "success": true,
-      "details": "Name: \u0905\u092e\u093f\u0924 \u0936\u0930\u094d\u092e\u093e, Exp: 5",
-      "timestamp": "2026-03-07T21:25:46.529678"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:57.816540"
     },
     {
       "test": "Check processing status - te",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.617308"
-    },
-    {
-      "test": "Mock transcription processing - te",
-      "success": true,
-      "details": "Name: \u0c05\u0c2e\u0c3f\u0c24\u0c4d \u0c36\u0c30\u0c4d\u0c2e, Exp: 1",
-      "timestamp": "2026-03-07T21:25:46.617455"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:57.826585"
     },
     {
       "test": "GET /nextapi/wallet",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.625701"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:57.836838"
     },
     {
       "test": "GET /nextapi/candidates",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.632604"
-    },
-    {
-      "test": "POST /nextapi/unlock",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.644580"
-    },
-    {
-      "test": "GET /nextapi/wallet",
-      "success": true,
-      "details": "Status: 200",
-      "timestamp": "2026-03-07T21:25:46.651128"
-    },
-    {
-      "test": "Credit deduction verification",
-      "success": true,
-      "details": "Expected: 80, Got: 80",
-      "timestamp": "2026-03-07T21:25:46.651205"
-    },
-    {
-      "test": "Candidate unlock verification",
-      "success": true,
-      "details": "Candidate 537797e6-6049-4589-8f80-0e4104e5ba24 in unlocked list: True",
-      "timestamp": "2026-03-07T21:25:46.651211"
+      "success": false,
+      "details": "Status: 500, Expected: 200, Response: <!DOCTYPE html><html><head><style data-next-hide-fouc=\"true\">body{display:none}</style><noscript data-next-hide-fouc=\"true\"><style>body{display:block}</style></noscript><meta charSet=\"utf-8\"/><meta na",
+      "timestamp": "2026-03-08T13:00:57.849225"
     }
   ]
 }

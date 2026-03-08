@@ -429,7 +429,27 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
               🗣 {getLanguageLabel(candidate.lang_code)}
             </span>
           )}
+          {/* Relocation Badge */}
+          {candidate.will_relocate !== undefined && (
+            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+              candidate.will_relocate 
+                ? 'bg-[#36B37E]/20 text-[#36B37E]' 
+                : 'bg-[#8B95A5]/10 text-[#8B95A5]'
+            }`} data-testid="relocation-badge">
+              {candidate.will_relocate ? '✓ Will Relocate' : '✗ Won\'t Relocate'}
+            </span>
+          )}
         </div>
+        {/* Address */}
+        {candidate.address && (
+          <p className="text-[#8B95A5] text-sm mt-2 flex items-center gap-1" data-testid="candidate-address">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            {candidate.address}
+          </p>
+        )}
       </div>
 
       {/* AI Summary - Now shown prominently when processed */}

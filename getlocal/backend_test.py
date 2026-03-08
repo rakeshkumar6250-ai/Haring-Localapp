@@ -3,6 +3,7 @@
 import requests
 import sys
 import json
+import os
 from datetime import datetime
 import time
 
@@ -157,6 +158,199 @@ class GetLocalAPITester:
         
         # This should fail as expected since we're not sending a file
         return success
+
+    def test_manual_candidate_with_v2_fields(self):
+        """Test manual candidate creation with V2 fields (address, will_relocate)"""
+        print("\n🆕 Testing Manual Candidate with V2 Fields...")
+        import tempfile
+        
+        # Create empty audio file for manual entry
+        test_audio_path = '/tmp/manual_audio.webm'
+        with open(test_audio_path, 'wb') as f:
+            f.write(b'empty')  # Empty file for manual entries
+        
+        try:
+            import requests
+            url = f"{self.base_url}/nextapi/upload-audio"
+            
+            with open(test_audio_path, 'rb') as audio_file:
+                files = {'audio': ('manual.webm', audio_file, 'audio/webm')}
+                data = {
+                    'interview_type': 'manual',
+                    'extracted_name': 'Test Candidate V2',
+                    'extracted_role': 'Driver',
+                    'extracted_experience': '3',
+                    'extracted_summary': 'Experienced driver with clean record',
+                    'address': 'Test Address, Delhi 110001',
+                    'will_relocate': 'true',
+                    'lat': '28.6139',
+                    'lng': '77.2090'
+                }
+                
+                response = requests.post(url, files=files, data=data, timeout=15)
+                
+                if response.status_code == 201:
+                    result = response.json()
+                    candidate_id = result.get('candidateId')
+                    
+                    self.log_test("Manual candidate creation with V2 fields", True, f"Candidate ID: {candidate_id}")
+                    
+                    # Verify the candidate has V2 fields
+                    success, candidates_data = self.test_api_endpoint(
+                        "Check V2 fields in candidate",
+                        "GET", 
+                        "/nextapi/candidates"
+                    )
+                    
+                    if success and 'candidates' in candidates_data:
+                        candidate = next((c for c in candidates_data['candidates'] if c['_id'] == candidate_id), None)
+                        
+                        if candidate:
+                            has_address = bool(candidate.get('address', '').strip())
+                            has_relocate = candidate.get('will_relocate') is not None
+                            
+                            self.log_test(
+                                "V2 fields verification - address",
+                                has_address,
+                                f"Address: {candidate.get('address', 'N/A')}"
+                            )
+                            
+                            self.log_test(
+                                "V2 fields verification - will_relocate",
+                                has_relocate,
+                                f"Will relocate: {candidate.get('will_relocate', 'N/A')}"
+                            )
+                            
+                            return candidate_id
+                        else:
+                            self.log_test("Manual candidate V2 verification", False, "Candidate not found")
+                    else:
+                        self.log_test("Manual candidate V2 verification", False, "Failed to fetch candidates")
+                else:
+                    self.log_test("Manual candidate creation with V2 fields", False, f"Status: {response.status_code}")
+                    
+        except Exception as e:
+            self.log_test("Manual candidate creation with V2 fields", False, f"Error: {str(e)}")
+            return None
+        finally:
+            if os.path.exists(test_audio_path):
+                os.remove(test_audio_path)
+        
+        return None
+
+    def test_job_posting_with_v2_fields(self):
+        """Test job posting with V2 fields (salary, perks, training, job_expectations)"""
+        print("\n🆕 Testing Job Posting with V2 Fields...")
+        
+        # Test job posting with all V2 fields
+        job_data = {
+            "title": "Test Driver Position V2",
+            "category": "Driver", 
+            "required_experience": 2,
+            "location_radius": 15,
+            "location": {"lat": 28.6139, "lng": 77.2090},
+            # V2 fields
+            "salary": {
+                "type": "fixed",
+                "amount": 25000,
+                "display": "₹25,000/month"
+            },
+            "perks": ["meals", "transport", "pf_esi"],
+            "training_provided": True,
+            "job_expectations": "Deliver food orders within 5km radius, maintain vehicle cleanliness, handle cash payments"
+        }
+        
+        success, response_data = self.test_api_endpoint(
+            "POST /nextapi/jobs with V2 fields",
+            "POST",
+            "/nextapi/jobs",
+            expected_status=201,
+            data=job_data
+        )
+        
+        if success and 'job' in response_data:
+            job = response_data['job']
+            job_id = job.get('_id')
+            
+            # Verify V2 fields in response
+            has_salary = bool(job.get('salary'))
+            has_perks = len(job.get('perks', [])) > 0
+            has_training = job.get('training_provided') is not None
+            has_expectations = bool(job.get('job_expectations', '').strip())
+            
+            self.log_test(
+                "V2 job fields verification - salary",
+                has_salary,
+                f"Salary: {job.get('salary', 'N/A')}"
+            )
+            
+            self.log_test(
+                "V2 job fields verification - perks",
+                has_perks,
+                f"Perks: {job.get('perks', 'N/A')}"
+            )
+            
+            self.log_test(
+                "V2 job fields verification - training",
+                has_training,
+                f"Training: {job.get('training_provided', 'N/A')}"
+            )
+            
+            self.log_test(
+                "V2 job fields verification - expectations",
+                has_expectations,
+                f"Expectations length: {len(job.get('job_expectations', ''))}"
+            )
+            
+            return job_id
+        
+        return None
+
+    def test_salary_range_job(self):
+        """Test job posting with salary range instead of fixed"""
+        print("\n🆕 Testing Job Posting with Salary Range...")
+        
+        job_data = {
+            "title": "Test Cook Position - Salary Range",
+            "category": "Cook",
+            "required_experience": 1,
+            "location_radius": 10,
+            "location": {"lat": 28.6139, "lng": 77.2090},
+            "salary": {
+                "type": "range",
+                "min": 15000,
+                "max": 20000,
+                "display": "₹15,000 - ₹20,000/month"
+            },
+            "perks": ["meals", "accommodation"],
+            "training_provided": False,
+            "job_expectations": "Prepare meals for household, maintain kitchen cleanliness"
+        }
+        
+        success, response_data = self.test_api_endpoint(
+            "POST /nextapi/jobs with salary range",
+            "POST",
+            "/nextapi/jobs", 
+            expected_status=201,
+            data=job_data
+        )
+        
+        if success and 'job' in response_data:
+            job = response_data['job']
+            salary = job.get('salary', {})
+            
+            is_range = salary.get('type') == 'range'
+            has_min_max = 'min' in salary and 'max' in salary
+            
+            self.log_test(
+                "Salary range verification",
+                is_range and has_min_max,
+                f"Salary: {salary}"
+            )
+            
+            return job.get('_id')
+        
+        return None
 
     def test_mock_transcription_flow(self):
         """Test mock transcription processing flow with real file upload"""
@@ -323,7 +517,7 @@ class GetLocalAPITester:
 
     def run_all_tests(self):
         """Run all API tests"""
-        print("🚀 Starting GetLocal API Tests...")
+        print("🚀 Starting GetLocal V2 API Tests...")
         print(f"Testing against: {self.base_url}")
         
         # Test individual APIs
@@ -332,7 +526,13 @@ class GetLocalAPITester:
         self.test_jobs_api()
         self.test_upload_audio_api()
         
-        # Test mock transcription flow (main feature)
+        # Test V2 specific features
+        print("\n🆕 === GETLOCAL V2 FEATURE TESTS ===")
+        self.test_manual_candidate_with_v2_fields()
+        self.test_job_posting_with_v2_fields()
+        self.test_salary_range_job()
+        
+        # Test mock transcription flow (existing feature)
         self.test_mock_transcription_flow()
         
         # Run integration tests

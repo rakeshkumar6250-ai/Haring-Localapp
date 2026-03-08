@@ -34,7 +34,12 @@ export async function POST(request) {
       category, 
       required_experience, 
       location_radius,
-      location 
+      location,
+      // New fields
+      salary,
+      perks,
+      training_provided,
+      job_expectations
     } = body;
 
     // Validation
@@ -54,6 +59,11 @@ export async function POST(request) {
       required_experience: parseInt(required_experience) || 0,
       location_radius: parseInt(location_radius) || 10,
       location: location || { lat: 28.6139, lng: 77.2090 },
+      // New fields
+      salary: salary || null,
+      perks: perks || [],
+      training_provided: training_provided || false,
+      job_expectations: job_expectations || '',
       status: 'active',
       is_active: true,
       created_at: new Date(),

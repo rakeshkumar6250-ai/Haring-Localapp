@@ -5,7 +5,16 @@ import { useRouter } from 'next/navigation';
 
 const JOB_CATEGORIES = [
   'Driver', 'Cook', 'Delivery', 'Security Guard', 'House Helper', 
-  'Electrician', 'Plumber', 'Carpenter', 'Cleaner', 'Gardener', 'General'
+  'Electrician', 'Plumber', 'Carpenter', 'Cleaner', 'Cashier', 'General'
+];
+
+const PERKS_OPTIONS = [
+  { id: 'meals', label: 'Free Meals', icon: '🍽️' },
+  { id: 'accommodation', label: 'Accommodation', icon: '🏠' },
+  { id: 'pf_esi', label: 'PF/ESI', icon: '🏥' },
+  { id: 'transport', label: 'Transport', icon: '🚌' },
+  { id: 'uniform', label: 'Uniform Provided', icon: '👔' },
+  { id: 'bonus', label: 'Performance Bonus', icon: '💰' },
 ];
 
 export default function PostJobPage() {
@@ -19,15 +28,22 @@ export default function PostJobPage() {
     title: '',
     category: '',
     required_experience: 0,
-    location_radius: 10
+    location_radius: 10,
+    // New fields
+    salary_type: 'fixed', // 'fixed' or 'range'
+    salary_fixed: '',
+    salary_min: '',
+    salary_max: '',
+    perks: [],
+    training_provided: false,
+    job_expectations: ''
   });
 
-  // Get user location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setUserLocation({ lat: 28.6139, lng: 77.2090 }) // Default: Delhi
+        () => setUserLocation({ lat: 28.6139, lng: 77.2090 })
       );
     } else {
       setUserLocation({ lat: 28.6139, lng: 77.2090 });
@@ -49,12 +65,37 @@ export default function PostJobPage() {
 
     setLoading(true);
     try {
+      // Format salary data
+      let salaryData = {};
+      if (formData.salary_type === 'fixed' && formData.salary_fixed) {
+        salaryData = {
+          type: 'fixed',
+          amount: parseInt(formData.salary_fixed),
+          display: `₹${parseInt(formData.salary_fixed).toLocaleString()}/month`
+        };
+      } else if (formData.salary_type === 'range' && formData.salary_min && formData.salary_max) {
+        salaryData = {
+          type: 'range',
+          min: parseInt(formData.salary_min),
+          max: parseInt(formData.salary_max),
+          display: `₹${parseInt(formData.salary_min).toLocaleString()} - ₹${parseInt(formData.salary_max).toLocaleString()}/month`
+        };
+      }
+
       const res = await fetch('/nextapi/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          location: userLocation
+          title: formData.title,
+          category: formData.category,
+          required_experience: parseInt(formData.required_experience),
+          location_radius: parseInt(formData.location_radius),
+          location: userLocation,
+          // New fields
+          salary: salaryData,
+          perks: formData.perks,
+          training_provided: formData.training_provided,
+          job_expectations: formData.job_expectations.trim()
         }),
       });
 
@@ -62,9 +103,7 @@ export default function PostJobPage() {
       
       if (res.ok) {
         setSuccess(true);
-        setTimeout(() => {
-          router.push('/hire');
-        }, 1500);
+        setTimeout(() => router.push('/hire'), 1500);
       } else {
         setError(data.error || 'Failed to post job');
       }
@@ -77,6 +116,15 @@ export default function PostJobPage() {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const togglePerk = (perkId) => {
+    setFormData(prev => ({
+      ...prev,
+      perks: prev.perks.includes(perkId)
+        ? prev.perks.filter(p => p !== perkId)
+        : [...prev.perks, perkId]
+    }));
   };
 
   if (success) {
@@ -118,7 +166,6 @@ export default function PostJobPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
-        {/* Error Message */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm" data-testid="error-message">
             {error}
@@ -135,7 +182,7 @@ export default function PostJobPage() {
             value={formData.title}
             onChange={(e) => handleChange('title', e.target.value)}
             placeholder="e.g., Need experienced driver for delivery"
-            className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-4 text-white placeholder-[#8B95A5]/50 focus:border-[#0052CC] focus:ring-1 focus:ring-[#0052CC] transition-all"
+            className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-4 text-white placeholder-[#8B95A5]/50 focus:border-[#0052CC] transition-all"
             data-testid="job-title-input"
           />
         </div>
@@ -164,18 +211,131 @@ export default function PostJobPage() {
           </div>
         </div>
 
+        {/* Salary */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-[#8B95A5]">Salary Offered</label>
+          
+          {/* Salary Type Toggle */}
+          <div className="flex bg-[#151B2D] rounded-xl p-1 mb-3">
+            <button
+              type="button"
+              onClick={() => handleChange('salary_type', 'fixed')}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                formData.salary_type === 'fixed' ? 'bg-[#0052CC] text-white' : 'text-[#8B95A5]'
+              }`}
+            >
+              Fixed Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChange('salary_type', 'range')}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                formData.salary_type === 'range' ? 'bg-[#0052CC] text-white' : 'text-[#8B95A5]'
+              }`}
+            >
+              Salary Range
+            </button>
+          </div>
+
+          {formData.salary_type === 'fixed' ? (
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8B95A5]">₹</span>
+              <input
+                type="number"
+                value={formData.salary_fixed}
+                onChange={(e) => handleChange('salary_fixed', e.target.value)}
+                placeholder="15000"
+                className="w-full bg-[#151B2D] border border-white/10 rounded-xl pl-8 pr-20 py-3 text-white"
+                data-testid="salary-fixed-input"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8B95A5] text-sm">/month</span>
+            </div>
+          ) : (
+            <div className="flex gap-3 items-center">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B95A5]">₹</span>
+                <input
+                  type="number"
+                  value={formData.salary_min}
+                  onChange={(e) => handleChange('salary_min', e.target.value)}
+                  placeholder="10000"
+                  className="w-full bg-[#151B2D] border border-white/10 rounded-xl pl-7 pr-3 py-3 text-white"
+                  data-testid="salary-min-input"
+                />
+              </div>
+              <span className="text-[#8B95A5]">to</span>
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8B95A5]">₹</span>
+                <input
+                  type="number"
+                  value={formData.salary_max}
+                  onChange={(e) => handleChange('salary_max', e.target.value)}
+                  placeholder="20000"
+                  className="w-full bg-[#151B2D] border border-white/10 rounded-xl pl-7 pr-3 py-3 text-white"
+                  data-testid="salary-max-input"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Perks */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-[#8B95A5]">Perks & Benefits</label>
+          <div className="grid grid-cols-2 gap-2">
+            {PERKS_OPTIONS.map((perk) => (
+              <button
+                key={perk.id}
+                type="button"
+                onClick={() => togglePerk(perk.id)}
+                className={`flex items-center gap-2 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
+                  formData.perks.includes(perk.id)
+                    ? 'bg-[#36B37E]/20 text-[#36B37E] border border-[#36B37E]/50'
+                    : 'bg-[#151B2D] text-[#8B95A5] border border-white/10'
+                }`}
+                data-testid={`perk-${perk.id}`}
+              >
+                <span>{perk.icon}</span>
+                <span>{perk.label}</span>
+                {formData.perks.includes(perk.id) && (
+                  <svg className="ml-auto" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <polyline points="20 6 9 17 4 12" stroke="currentColor" strokeWidth="2" fill="none"/>
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Training Provided */}
+        <div className="bg-[#151B2D] border border-white/10 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">Training Provided?</p>
+              <p className="text-[#8B95A5] text-sm">Will you train freshers?</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleChange('training_provided', !formData.training_provided)}
+              className={`w-14 h-8 rounded-full transition-all ${
+                formData.training_provided ? 'bg-[#36B37E]' : 'bg-[#8B95A5]/30'
+              }`}
+              data-testid="training-toggle"
+            >
+              <div className={`w-6 h-6 bg-white rounded-full shadow transition-transform ${
+                formData.training_provided ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+        </div>
+
         {/* Required Experience */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-[#8B95A5]">
-            Required Experience
-          </label>
+          <label className="block text-sm font-medium text-[#8B95A5]">Required Experience</label>
           <div className="bg-[#151B2D] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-white font-medium">
                 {formData.required_experience === 0 ? 'Fresher OK' : `${formData.required_experience} years minimum`}
-              </span>
-              <span className="text-[#0052CC] text-sm font-medium">
-                {formData.required_experience === 0 ? 'No experience needed' : 'Experienced preferred'}
               </span>
             </div>
             <input
@@ -197,17 +357,11 @@ export default function PostJobPage() {
 
         {/* Location Radius */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-[#8B95A5]">
-            Search Radius
-          </label>
+          <label className="block text-sm font-medium text-[#8B95A5]">Search Radius</label>
           <div className="bg-[#151B2D] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-white font-medium">
-                {formData.location_radius} km
-              </span>
-              <span className="text-[#36B37E] text-sm">
-                📍 From your location
-              </span>
+              <span className="text-white font-medium">{formData.location_radius} km</span>
+              <span className="text-[#36B37E] text-sm">📍 From your location</span>
             </div>
             <input
               type="range"
@@ -218,12 +372,22 @@ export default function PostJobPage() {
               className="w-full accent-[#36B37E]"
               data-testid="radius-slider"
             />
-            <div className="flex justify-between text-xs text-[#8B95A5] mt-2">
-              <span>1 km</span>
-              <span>25 km</span>
-              <span>50 km</span>
-            </div>
           </div>
+        </div>
+
+        {/* Job Expectations */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-[#8B95A5]">
+            Job Expectations
+          </label>
+          <textarea
+            value={formData.job_expectations}
+            onChange={(e) => handleChange('job_expectations', e.target.value)}
+            placeholder="What will the candidate actually do all day? E.g., 'Deliver food orders within 5km radius, maintain vehicle cleanliness, handle cash payments...'"
+            rows={4}
+            className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-[#8B95A5]/50 resize-none"
+            data-testid="job-expectations-input"
+          />
         </div>
 
         {/* Preview Card */}
@@ -235,22 +399,42 @@ export default function PostJobPage() {
             </svg>
             <span className="text-[#0052CC] text-sm font-medium">Job Preview</span>
           </div>
-          <h3 className="text-white font-bold text-lg mb-1">
+          <h3 className="text-white font-bold text-lg mb-2">
             {formData.title || 'Your Job Title'}
           </h3>
-          <div className="flex flex-wrap gap-2 text-sm">
+          <div className="flex flex-wrap gap-2 text-sm mb-3">
             {formData.category && (
               <span className="bg-[#0052CC]/30 text-[#0052CC] px-2 py-1 rounded-full">
                 {formData.category}
               </span>
             )}
-            <span className="bg-[#36B37E]/20 text-[#36B37E] px-2 py-1 rounded-full">
-              {formData.required_experience === 0 ? 'Fresher OK' : `${formData.required_experience}+ yrs exp`}
-            </span>
+            {(formData.salary_fixed || (formData.salary_min && formData.salary_max)) && (
+              <span className="bg-[#36B37E]/20 text-[#36B37E] px-2 py-1 rounded-full">
+                {formData.salary_type === 'fixed' 
+                  ? `₹${parseInt(formData.salary_fixed || 0).toLocaleString()}/mo`
+                  : `₹${parseInt(formData.salary_min || 0).toLocaleString()}-${parseInt(formData.salary_max || 0).toLocaleString()}/mo`
+                }
+              </span>
+            )}
             <span className="bg-[#8B95A5]/20 text-[#8B95A5] px-2 py-1 rounded-full">
-              📍 {formData.location_radius} km radius
+              {formData.required_experience === 0 ? 'Fresher OK' : `${formData.required_experience}+ yrs`}
             </span>
           </div>
+          {formData.perks.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {formData.perks.map(perkId => {
+                const perk = PERKS_OPTIONS.find(p => p.id === perkId);
+                return perk ? (
+                  <span key={perkId} className="text-xs text-[#8B95A5]">
+                    {perk.icon} {perk.label}
+                  </span>
+                ) : null;
+              })}
+            </div>
+          )}
+          {formData.training_provided && (
+            <span className="text-xs text-[#36B37E]">✓ Training provided</span>
+          )}
         </div>
 
         {/* Submit Button */}
