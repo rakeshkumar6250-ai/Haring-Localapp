@@ -8,102 +8,70 @@ Voice-first two-sided marketplace for blue-collar hiring in India, supporting 9 
 - **Backend**: Next.js API Routes (`/app/getlocal/src/app/nextapi/`)
 - **Database**: MongoDB (getlocal database)
 - **AI**: OpenAI Whisper (whisper-1) + GPT-4o-mini
+- **Payments**: Razorpay (currently in MOCK mode - placeholder test keys)
 - **Location**: /app/getlocal/
 - **Platform**: Emergent (proxy at `/app/frontend/` -> Next.js on port 3001)
 
-## What's Been Implemented
+## Implemented Phases
 
-### Phase 1: Database Schema Expansion
-- **candidates**: `trust_score`, `address`, `will_relocate`, `education_level`, `english_level`, `experience_type`, `verification_status`, `id_document_url`
-- **jobs**: expanded with `job_type`, `work_location_type`, `pay_type`, `requires_joining_fee`, `minimum_education`, `english_level`, `experience_required`, `is_walk_in`, `contact_preference`, `job_description`, `employer_id`, `company_name`
-- **employers**: `company_name`, `phone`, `verification_status`, `verification_document_url`
-- **support_tickets**: `user_type`, `phone_number`, `issue_description`, `status`, `requires_call`
+### Phase 1-5: Core Marketplace (from original repo)
+- DB schemas: candidates, jobs, support_tickets, employers
+- 9 regional languages with real Whisper transcription
+- Voice/Manual onboarding, Audio job descriptions, Hyperlocal commute
+- Trust Score, Report No-Show, WhatsApp Invite
+- Chat Widget, Admin Support Dashboard
 
-### Phase 2: Regional Language Support
-9 languages with real Whisper transcription: en, hi, te, ta, kn, ml, bn, or, as
+### Phase 6: Real AI Transcription
+- Whisper + GPT-4o-mini with mock fallback (`ai_source` tracking)
 
-### Phase 3: Candidate Experience
-- Voice/Manual Toggle, Location Fields, Audio Job Descriptions, Hyperlocal Commute Tag (mock)
-
-### Phase 4: Employer Experience
-- Detailed Job Form, Trust Score Badge, Report No-Show, WhatsApp Invite
-
-### Phase 5: Customer Care & Admin
-- Chat Widget, Admin Support Dashboard (`/admin/support`)
-
-### Phase 6: Real AI Transcription (Mar 11, 2026)
-- Whisper + GPT-4o-mini with mock fallback
-
-### Phase 7: Employer KYC & Job Posting V2 (Mar 11, 2026)
+### Phase 7: Employer KYC & Job Posting V2
 - Employer KYC gate, 3-step job form, Verified Business badge, Admin KYC dashboard
+- Expanded job schema: job_type, work_location_type, pay_type, requires_joining_fee, etc.
 
-### Phase 8: Candidate KYC & Employer Filtering (Mar 11, 2026)
-- **Candidate schema**: `education_level` (10th Or Below / 12th Pass / Diploma / ITI / Graduate / Post Graduate), `english_level` (No English / Basic English / Good English), `experience_type` (Fresher / Experienced), `id_document_url`, `verification_status`
-- **/join page**: Education/English/Experience dropdowns in both manual & voice modes. "Boost Your Profile" ID upload section (Aadhaar/Voter ID/PAN)
-- **/hire page**: Filter bar with Education, English, Experience dropdowns + Verified Only toggle. "Verified Identity" badge on candidate cards. Education/English/Experience tags on cards.
-- **/admin/kyc**: Unified dashboard with Candidates/Employers tab toggle. Approve/Reject for both types. View ID document links.
+### Phase 8: Candidate KYC & Filtering
+- Candidate education_level, english_level, experience_type, ID upload
+- /hire filter bar with Education/English/Experience/Verified toggles
+- Unified /admin/kyc with Candidates/Employers tabs
+
+### Phase 9: Razorpay Payment Gateway (Mar 11, 2026)
+- **Credits system**: Employer wallet with credits (default: 0)
+- **Credit packs**: 10 credits / ₹500, 25 credits / ₹1,000, 50 credits / ₹1,750
+- **Unlock cost**: 1 credit per candidate profile unlock
+- **Buy Credits modal**: Opens when credits=0 and employer tries to unlock, or via header button
+- **Mock mode**: When Razorpay keys are placeholders, credits are added directly without real checkout
+- **Real mode ready**: Full Razorpay order creation → checkout → signature verification → credits added
+- **Status**: MOCK MODE (user will provide real Razorpay test keys)
 
 ## API Routes
 | Route | Method | Purpose |
 |-------|--------|---------|
-| /nextapi/upload-audio | POST | Create candidate (voice/manual) + Whisper |
+| /nextapi/upload-audio | POST | Create candidate + Whisper |
 | /nextapi/process-audio | POST | Re-process candidate audio |
-| /nextapi/candidates | GET | List candidates (with filter query params) |
-| /nextapi/candidates | PATCH | Admin approve/reject candidate KYC |
-| /nextapi/candidates/upload-id | POST | Upload candidate ID document |
-| /nextapi/jobs | GET/POST | Job CRUD (enriched with employer verification) |
-| /nextapi/wallet | GET/POST | Credits |
-| /nextapi/unlock | POST | Unlock profile (10 credits) |
+| /nextapi/candidates | GET/PATCH | List (with filters) / KYC approve/reject |
+| /nextapi/candidates/upload-id | POST | Candidate ID document upload |
+| /nextapi/jobs | GET/POST | Job CRUD |
+| /nextapi/wallet | GET/POST | Employer-specific credit wallet |
+| /nextapi/unlock | POST | Unlock candidate (1 credit, 402 if insufficient) |
+| /nextapi/payments/create-order | POST | Create Razorpay order (mock/real) |
+| /nextapi/payments/verify | POST | Verify payment + add credits |
 | /nextapi/report-noshow | POST | Deduct trust score |
 | /nextapi/support-tickets | GET/POST/PATCH | Support tickets |
 | /nextapi/employers | GET/POST/PATCH | Employer CRUD + KYC |
-| /nextapi/employers/upload-kyc | POST | KYC document upload |
+| /nextapi/employers/upload-kyc | POST | Employer KYC document upload |
 
-## Database Schemas
-
-### candidates
-```javascript
-{
-  _id, name, phone, location: {lat, lng},
-  address, will_relocate, trust_score,
-  education_level: '10th Or Below' | '12th Pass' | 'Diploma' | 'ITI' | 'Graduate' | 'Post Graduate',
-  english_level: 'No English' | 'Basic English' | 'Good English',
-  experience_type: 'Fresher' | 'Experienced',
-  verification_status: 'Unverified' | 'Pending' | 'Verified',
-  id_document_url: string | null,
-  role_category, experience_years, professional_summary,
-  audio_interview_url, lang_code, moltbot_processed,
-  transcription, ai_source, processed_at, created_at
-}
+## Environment Variables
 ```
-
-### employers
-```javascript
-{
-  _id, company_name, phone,
-  verification_status: 'Unverified' | 'Pending' | 'Verified',
-  verification_document_url: string | null,
-  verified_at, created_at, updated_at
-}
-```
-
-### jobs
-```javascript
-{
-  _id, title, category, company_name, employer_id,
-  job_type, work_location_type, pay_type,
-  salary, perks[], requires_joining_fee,
-  minimum_education, english_level, experience_required,
-  is_walk_in, contact_preference, job_description,
-  training_provided, employer_location,
-  location, is_active, status, created_at, updated_at
-}
+MONGODB_URI=mongodb://localhost:27017
+DB_NAME=getlocal
+OPENAI_API_KEY=sk-proj-...
+RAZORPAY_KEY_ID=rzp_test_PLACEHOLDER     # Replace with real test key
+RAZORPAY_KEY_SECRET=PLACEHOLDER_SECRET    # Replace with real test secret
 ```
 
 ## Pages
 - `/join` - Candidate onboarding (voice/manual) with education/english/experience + ID upload
 - `/jobs` - Job browsing with verified badges
-- `/hire` - Employer dashboard with filter bar + verified identity badges
+- `/hire` - Employer dashboard with filters, credit-based unlock, Buy Credits modal
 - `/post-job` - 3-step job posting with KYC gate
 - `/admin/support` - Support ticket management
 - `/admin/kyc` - Unified KYC verification (Candidates + Employers)
@@ -116,7 +84,8 @@ Voice-first two-sided marketplace for blue-collar hiring in India, supporting 9 
 - [x] Candidate KYC flow
 - [x] Expanded job posting
 - [x] Employer filtering by candidate attributes
-- [ ] Payment gateway (Stripe/Razorpay)
+- [x] Razorpay payment gateway (MOCK mode ready)
+- [ ] Activate Razorpay with real test keys (waiting for user)
 - [ ] SMS OTP verification
 
 ### P1 - High Priority
