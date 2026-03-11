@@ -8,92 +8,72 @@ Voice-first two-sided marketplace for blue-collar hiring in India, supporting 9 
 - **Backend**: Next.js API Routes (`/app/getlocal/src/app/nextapi/`)
 - **Database**: MongoDB (getlocal database)
 - **AI**: OpenAI Whisper (whisper-1) + GPT-4o-mini
-- **Payments**: Razorpay (currently in MOCK mode - placeholder test keys)
+- **Payments**: Razorpay (MOCK mode - placeholder test keys)
+- **Matching**: Custom weighted scoring engine
 - **Location**: /app/getlocal/
 - **Platform**: Emergent (proxy at `/app/frontend/` -> Next.js on port 3001)
 
 ## Implemented Phases
 
-### Phase 1-5: Core Marketplace (from original repo)
-- DB schemas: candidates, jobs, support_tickets, employers
-- 9 regional languages with real Whisper transcription
-- Voice/Manual onboarding, Audio job descriptions, Hyperlocal commute
-- Trust Score, Report No-Show, WhatsApp Invite
-- Chat Widget, Admin Support Dashboard
+### Phase 1-5: Core Marketplace
+DB schemas, 9 regional languages, Voice/Manual onboarding, Audio job descriptions, Trust Score, WhatsApp Invite, Chat Widget, Admin Support Dashboard
 
 ### Phase 6: Real AI Transcription
-- Whisper + GPT-4o-mini with mock fallback (`ai_source` tracking)
+Whisper + GPT-4o-mini with mock fallback
 
 ### Phase 7: Employer KYC & Job Posting V2
-- Employer KYC gate, 3-step job form, Verified Business badge, Admin KYC dashboard
-- Expanded job schema: job_type, work_location_type, pay_type, requires_joining_fee, etc.
+Employer KYC gate, 3-step job form, Verified Business badge, Admin KYC dashboard, expanded job schema
 
 ### Phase 8: Candidate KYC & Filtering
-- Candidate education_level, english_level, experience_type, ID upload
-- /hire filter bar with Education/English/Experience/Verified toggles
-- Unified /admin/kyc with Candidates/Employers tabs
+Candidate education/english/experience fields, ID upload, /hire filter bar, Unified /admin/kyc
 
-### Phase 9: Razorpay Payment Gateway (Mar 11, 2026)
-- **Credits system**: Employer wallet with credits (default: 0)
-- **Credit packs**: 10 credits / ₹500, 25 credits / ₹1,000, 50 credits / ₹1,750
-- **Unlock cost**: 1 credit per candidate profile unlock
-- **Buy Credits modal**: Opens when credits=0 and employer tries to unlock, or via header button
-- **Mock mode**: When Razorpay keys are placeholders, credits are added directly without real checkout
-- **Real mode ready**: Full Razorpay order creation → checkout → signature verification → credits added
-- **Status**: MOCK MODE (user will provide real Razorpay test keys)
+### Phase 9: Razorpay Payment Gateway
+Credits system (default 0), 3 packs (10/₹500, 25/₹1000, 50/₹1750), 1 credit per unlock, Buy Credits modal
+
+### Phase 10: Automated WhatsApp Matching Engine (Mar 11, 2026)
+- **calculateMatchScore(job, candidate)**: Weighted scoring - Education 25%, English 20%, Experience 30%, Category 25%. Hierarchical comparison (candidate level >= job requirement). Partial category credit via keyword matching in summary.
+- **Employer Push (>50%)**: When candidate joins/updates → find matching jobs → log employer notification with match details
+- **Candidate Push (>70%)**: When job posted → find matching candidates → log candidate notification
+- **OutgoingLog**: All notifications saved to `outgoing_log` collection with type, recipient, message, score, matched/missing fields, status='queued'
+- **Triggers**: Wired into upload-audio (manual + voice) and jobs POST routes. Non-blocking (fire-and-forget).
+- **WhatsApp Messages**: Formatted with candidate name, score, job title, matched/missing fields, app link. MOCKED (logged to DB, not sent via real API).
 
 ## API Routes
 | Route | Method | Purpose |
 |-------|--------|---------|
-| /nextapi/upload-audio | POST | Create candidate + Whisper |
-| /nextapi/process-audio | POST | Re-process candidate audio |
-| /nextapi/candidates | GET/PATCH | List (with filters) / KYC approve/reject |
-| /nextapi/candidates/upload-id | POST | Candidate ID document upload |
-| /nextapi/jobs | GET/POST | Job CRUD |
-| /nextapi/wallet | GET/POST | Employer-specific credit wallet |
-| /nextapi/unlock | POST | Unlock candidate (1 credit, 402 if insufficient) |
-| /nextapi/payments/create-order | POST | Create Razorpay order (mock/real) |
-| /nextapi/payments/verify | POST | Verify payment + add credits |
-| /nextapi/report-noshow | POST | Deduct trust score |
-| /nextapi/support-tickets | GET/POST/PATCH | Support tickets |
+| /nextapi/upload-audio | POST | Create candidate + Whisper + match trigger |
+| /nextapi/process-audio | POST | Re-process audio |
+| /nextapi/candidates | GET/PATCH | List (with filters) / KYC |
+| /nextapi/candidates/upload-id | POST | Candidate ID upload |
+| /nextapi/jobs | GET/POST | Job CRUD + candidate match trigger |
+| /nextapi/wallet | GET/POST | Employer credit wallet |
+| /nextapi/unlock | POST | Unlock candidate (1 credit) |
+| /nextapi/payments/create-order | POST | Razorpay order |
+| /nextapi/payments/verify | POST | Payment verification + credits |
+| /nextapi/notifications | GET | Outgoing notification log (filterable) |
 | /nextapi/employers | GET/POST/PATCH | Employer CRUD + KYC |
-| /nextapi/employers/upload-kyc | POST | Employer KYC document upload |
+| /nextapi/employers/upload-kyc | POST | Employer KYC upload |
+| /nextapi/report-noshow | POST | Trust score deduction |
+| /nextapi/support-tickets | GET/POST/PATCH | Support tickets |
+
+## Key Files
+- `/src/lib/matching.js` - Matching engine, scoring, triggers, message formatting
+- `/src/lib/mongodb.js` - All collection helpers including getOutgoingLog()
+- `/src/lib/utils.js` - Distance, phone masking, commute utilities
 
 ## Environment Variables
 ```
-MONGODB_URI=mongodb://localhost:27017
-DB_NAME=getlocal
-OPENAI_API_KEY=sk-proj-...
-RAZORPAY_KEY_ID=rzp_test_PLACEHOLDER     # Replace with real test key
-RAZORPAY_KEY_SECRET=PLACEHOLDER_SECRET    # Replace with real test secret
+MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
 ```
 
-## Pages
-- `/join` - Candidate onboarding (voice/manual) with education/english/experience + ID upload
-- `/jobs` - Job browsing with verified badges
-- `/hire` - Employer dashboard with filters, credit-based unlock, Buy Credits modal
-- `/post-job` - 3-step job posting with KYC gate
-- `/admin/support` - Support ticket management
-- `/admin/kyc` - Unified KYC verification (Candidates + Employers)
-
 ## Prioritized Backlog
-
-### P0 - Critical
-- [x] Real Whisper API integration
-- [x] Employer KYC flow
-- [x] Candidate KYC flow
-- [x] Expanded job posting
-- [x] Employer filtering by candidate attributes
-- [x] Razorpay payment gateway (MOCK mode ready)
-- [ ] Activate Razorpay with real test keys (waiting for user)
+- [x] Real Whisper integration
+- [x] Employer & Candidate KYC
+- [x] Razorpay payment gateway
+- [x] Automated matching engine
+- [ ] Activate Razorpay with real keys
+- [ ] Real WhatsApp delivery (Interakt/Twilio/Cloud API)
 - [ ] SMS OTP verification
-
-### P1 - High Priority
-- [ ] Employer authentication (proper login)
+- [ ] Employer authentication
 - [ ] Real commute calculation (Maps API)
-- [ ] Push notifications
-
-### P2 - Nice to Have
-- [ ] Video interviews
-- [ ] AI-powered job matching
-- [ ] Analytics dashboard
+- [ ] Video interviews, AI job matching, Analytics dashboard
