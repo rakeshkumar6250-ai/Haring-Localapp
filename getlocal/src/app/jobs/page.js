@@ -164,22 +164,49 @@ function JobCard({ job, commuteTime, isSpeaking, onPlayAudio, onStopAudio }) {
           <h3 className="font-bold text-lg text-white" data-testid="job-title">
             {job.title}
           </h3>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {/* Company name + Verified badge */}
+          {(job.employer_company || job.company_name) && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[#8B95A5] text-sm">{job.employer_company || job.company_name}</span>
+              {job.employer_verified && (
+                <span className="inline-flex items-center gap-1 bg-[#36B37E]/20 text-[#36B37E] text-xs px-2 py-0.5 rounded-full font-medium" data-testid="verified-business-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  Verified Business
+                </span>
+              )}
+            </div>
+          )}
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className="bg-[#0052CC]/20 text-[#0052CC] text-xs px-2 py-1 rounded-full font-medium">
               {job.category}
             </span>
+            {job.job_type && job.job_type !== 'Full Time' && (
+              <span className="bg-[#8B95A5]/15 text-[#8B95A5] text-xs px-2 py-1 rounded-full font-medium">
+                {job.job_type}
+              </span>
+            )}
             {job.training_provided && (
               <span className="bg-[#36B37E]/20 text-[#36B37E] text-xs px-2 py-1 rounded-full font-medium">
                 Training Provided
               </span>
             )}
+            {job.is_walk_in && (
+              <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-1 rounded-full font-medium">
+                Walk-in
+              </span>
+            )}
+            {job.requires_joining_fee && (
+              <span className="bg-red-500/20 text-red-400 text-xs px-2 py-1 rounded-full font-medium" data-testid="joining-fee-warning">
+                Joining Fee
+              </span>
+            )}
           </div>
         </div>
         
-        {/* Audio Play Button - Zero Reading Feature */}
+        {/* Audio Play Button */}
         <button
           onClick={isSpeaking ? onStopAudio : onPlayAudio}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0 ml-3 ${
             isSpeaking 
               ? 'bg-red-500 animate-pulse' 
               : 'bg-[#0052CC] hover:bg-[#003d99]'
@@ -208,19 +235,20 @@ function JobCard({ job, commuteTime, isSpeaking, onPlayAudio, onStopAudio }) {
             {job.salary.display}
           </p>
           <p className="text-[#8B95A5] text-xs">
+            {job.pay_type && job.pay_type !== 'Fixed' ? `${job.pay_type} · ` : ''}
             {job.required_experience === 0 ? 'Fresher OK' : `${job.required_experience}+ years experience`}
           </p>
         </div>
       )}
 
-      {/* Commute Tag - Hyperlocal Feature */}
+      {/* Commute Tag */}
       <div className="flex items-center gap-2 mb-3">
         <span className="bg-[#0052CC]/10 text-[#0052CC] text-sm px-3 py-1.5 rounded-lg font-medium" data-testid="commute-tag">
           {commuteTime}
         </span>
         {job.employer_location && (
-          <span className="text-[#8B95A5] text-xs">
-            📍 {job.employer_location}
+          <span className="text-[#8B95A5] text-xs truncate">
+            {job.employer_location}
           </span>
         )}
       </div>
@@ -240,12 +268,12 @@ function JobCard({ job, commuteTime, isSpeaking, onPlayAudio, onStopAudio }) {
         </div>
       )}
 
-      {/* Job Expectations Preview */}
-      {job.job_expectations && (
+      {/* Job Description/Expectations */}
+      {(job.job_description || job.job_expectations) && (
         <div className="bg-[#0A0F1C]/50 rounded-xl p-3 mb-3">
-          <p className="text-[#8B95A5] text-xs mb-1 font-medium">What you'll do:</p>
+          <p className="text-[#8B95A5] text-xs mb-1 font-medium">What you&apos;ll do:</p>
           <p className="text-white text-sm line-clamp-2" data-testid="job-expectations">
-            {job.job_expectations}
+            {job.job_description || job.job_expectations}
           </p>
         </div>
       )}

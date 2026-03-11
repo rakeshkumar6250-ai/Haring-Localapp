@@ -38,4 +38,10 @@ export async function getSupportTickets() {
   return db.collection('support_tickets');
 }
 
+// Employers collection (KYC & profiles)
+export async function getEmployers() {
+  const db = await getDb();
+  return db.collection('employers');
+}
+
 export default clientPromise;
