@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getWallets } from '@/lib/mongodb';
 
-const DEFAULT_USER_ID = 'default-employer';
-
-export async function GET() {
+export async function GET(request) {
   try {
-    const wallets = await getWallets();
-    let wallet = await wallets.findOne({ user_id: DEFAULT_USER_ID });
+    const { searchParams } = new URL(request.url);
+    const employerId = searchParams.get('employer_id') || 'default-employer';
 
-    // Create default wallet if doesn't exist
+    const wallets = await getWallets();
+    let wallet = await wallets.findOne({ user_id: employerId });
+
     if (!wallet) {
       wallet = {
-        user_id: DEFAULT_USER_ID,
-        credit_balance: 100,
+        user_id: employerId,
+        credit_balance: 0,
         unlocked_candidates: [],
+        transactions: [],
         created_at: new Date()
       };
       await wallets.insertOne(wallet);
@@ -25,37 +26,32 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Wallet fetch error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch wallet' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch wallet' }, { status: 500 });
   }
 }
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { amount } = body;
+    const { amount, employer_id } = body;
+    const userId = employer_id || 'default-employer';
 
     if (!amount || amount <= 0) {
-      return NextResponse.json(
-        { error: 'Invalid amount' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
     const wallets = await getWallets();
-    
-    const result = await wallets.updateOne(
-      { user_id: DEFAULT_USER_ID },
-      { 
+
+    await wallets.updateOne(
+      { user_id: userId },
+      {
         $inc: { credit_balance: amount },
-        $setOnInsert: { created_at: new Date() }
+        $setOnInsert: { unlocked_candidates: [], transactions: [], created_at: new Date() }
       },
       { upsert: true }
     );
 
-    const wallet = await wallets.findOne({ user_id: DEFAULT_USER_ID });
+    const wallet = await wallets.findOne({ user_id: userId });
 
     return NextResponse.json({
       success: true,
@@ -63,9 +59,6 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('Wallet update error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update wallet' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update wallet' }, { status: 500 });
   }
 }

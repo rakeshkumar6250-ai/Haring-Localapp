@@ -1,88 +1,79 @@
 import { NextResponse } from 'next/server';
 import { getWallets, getCandidates } from '@/lib/mongodb';
 
-const DEFAULT_USER_ID = 'default-employer';
-const UNLOCK_COST = 10;
+const UNLOCK_COST = 1;
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { candidateId } = body;
+    const { candidateId, employer_id } = body;
+    const userId = employer_id || 'default-employer';
 
     if (!candidateId) {
-      return NextResponse.json(
-        { error: 'Candidate ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Candidate ID is required' }, { status: 400 });
     }
 
     const wallets = await getWallets();
     const candidates = await getCandidates();
 
-    // Check if candidate exists
     const candidate = await candidates.findOne({ _id: candidateId });
     if (!candidate) {
-      return NextResponse.json(
-        { error: 'Candidate not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
     }
 
-    // Get or create wallet
-    let wallet = await wallets.findOne({ user_id: DEFAULT_USER_ID });
+    let wallet = await wallets.findOne({ user_id: userId });
     if (!wallet) {
       wallet = {
-        user_id: DEFAULT_USER_ID,
-        credit_balance: 100,
+        user_id: userId,
+        credit_balance: 0,
         unlocked_candidates: [],
+        transactions: [],
         created_at: new Date()
       };
       await wallets.insertOne(wallet);
     }
 
-    // Check if already unlocked
+    // Already unlocked
     if (wallet.unlocked_candidates?.includes(candidateId)) {
       return NextResponse.json({
         success: true,
-        message: 'Candidate already unlocked',
+        message: 'Already unlocked',
         newBalance: wallet.credit_balance,
         phone: candidate.phone
       });
     }
 
-    // Check balance
+    // Insufficient credits
     if (wallet.credit_balance < UNLOCK_COST) {
       return NextResponse.json(
-        { error: 'Insufficient credits', required: UNLOCK_COST, available: wallet.credit_balance },
-        { status: 400 }
+        { error: 'insufficient_credits', required: UNLOCK_COST, available: wallet.credit_balance },
+        { status: 402 }
       );
     }
 
-    // Deduct credits and add to unlocked list
+    // Deduct and unlock
     await wallets.updateOne(
-      { user_id: DEFAULT_USER_ID },
+      { user_id: userId },
       {
         $inc: { credit_balance: -UNLOCK_COST },
-        $push: { unlocked_candidates: candidateId }
+        $push: {
+          unlocked_candidates: candidateId,
+          transactions: { type: 'unlock', candidateId, credits: -UNLOCK_COST, timestamp: new Date() }
+        }
       }
     );
 
-    const updatedWallet = await wallets.findOne({ user_id: DEFAULT_USER_ID });
-
-    console.log(`[UNLOCK] Candidate ${candidateId} unlocked. Credits: ${updatedWallet.credit_balance}`);
+    const updated = await wallets.findOne({ user_id: userId });
+    console.log(`[UNLOCK] ${candidateId} unlocked by ${userId}. Balance: ${updated.credit_balance}`);
 
     return NextResponse.json({
       success: true,
-      newBalance: updatedWallet.credit_balance,
+      newBalance: updated.credit_balance,
       phone: candidate.phone,
       message: 'Candidate unlocked successfully'
     });
-
   } catch (error) {
     console.error('Unlock error:', error);
-    return NextResponse.json(
-      { error: 'Failed to unlock candidate' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to unlock candidate' }, { status: 500 });
   }
 }

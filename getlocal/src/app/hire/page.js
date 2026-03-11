@@ -15,7 +15,7 @@ export default function HirePage() {
   const [userLocation, setUserLocation] = useState(null);
   const [unlockedIds, setUnlockedIds] = useState([]);
   const [unlockedPhones, setUnlockedPhones] = useState({});
-  const [credits, setCredits] = useState(100);
+  const [credits, setCredits] = useState(0);
   const [unlocking, setUnlocking] = useState(null);
   const [processing, setProcessing] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
@@ -26,6 +26,19 @@ export default function HirePage() {
   const [engFilter, setEngFilter] = useState('All');
   const [expFilter, setExpFilter] = useState('All');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  // Payment state
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [selectedPack, setSelectedPack] = useState(10);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [pendingUnlockId, setPendingUnlockId] = useState(null);
+
+  // Employer ID from localStorage
+  const [employerId, setEmployerId] = useState('default-employer');
+
+  useEffect(() => {
+    const eid = localStorage.getItem('employer_id') || 'default-employer';
+    setEmployerId(eid);
+  }, []);
 
   // Get user location
   useEffect(() => {
@@ -82,14 +95,14 @@ export default function HirePage() {
 
   const fetchCredits = useCallback(async () => {
     try {
-      const res = await fetch('/nextapi/wallet');
+      const res = await fetch(`/nextapi/wallet?employer_id=${employerId}`);
       const data = await res.json();
-      setCredits(data.balance || 100);
+      setCredits(data.balance ?? 0);
       setUnlockedIds(data.unlockedCandidates || []);
     } catch (err) {
       console.error('Failed to fetch wallet:', err);
     }
-  }, []);
+  }, [employerId]);
 
   useEffect(() => {
     fetchJobs();
@@ -113,9 +126,11 @@ export default function HirePage() {
     setDistanceFilter(20);
   };
 
+  // Handle unlock - check credits first
   const handleUnlock = async (candidateId) => {
-    if (credits < 10) {
-      alert('Not enough credits! You need 10 credits to unlock a profile.');
+    if (credits < 1) {
+      setPendingUnlockId(candidateId);
+      setShowBuyCredits(true);
       return;
     }
 
@@ -124,24 +139,115 @@ export default function HirePage() {
       const res = await fetch('/nextapi/unlock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId }),
+        body: JSON.stringify({ candidateId, employer_id: employerId }),
       });
 
       const data = await res.json();
+      if (res.status === 402) {
+        setPendingUnlockId(candidateId);
+        setShowBuyCredits(true);
+        return;
+      }
       if (res.ok) {
         setCredits(data.newBalance);
         setUnlockedIds(prev => [...prev, candidateId]);
-        // Store the revealed phone number
         if (data.phone) {
           setUnlockedPhones(prev => ({ ...prev, [candidateId]: data.phone }));
         }
-      } else {
-        alert(data.error || 'Failed to unlock');
       }
     } catch (err) {
       console.error('Unlock error:', err);
     } finally {
       setUnlocking(null);
+    }
+  };
+
+  // Load Razorpay script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.Razorpay) { resolve(true); return; }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Buy credits with Razorpay
+  const handleBuyCredits = async () => {
+    setPaymentLoading(true);
+    try {
+      const orderRes = await fetch('/nextapi/payments/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credits: selectedPack, employer_id: employerId }),
+      });
+      const orderData = await orderRes.json();
+      if (!orderRes.ok) throw new Error(orderData.error);
+
+      // Mock mode: add credits directly
+      if (orderData.mock) {
+        const verifyRes = await fetch('/nextapi/payments/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employer_id: employerId, credits: selectedPack, mock: true }),
+        });
+        const verifyData = await verifyRes.json();
+        if (verifyData.success) {
+          setCredits(verifyData.new_balance);
+          setShowBuyCredits(false);
+          if (pendingUnlockId) {
+            setTimeout(() => handleUnlock(pendingUnlockId), 300);
+            setPendingUnlockId(null);
+          }
+        }
+        return;
+      }
+
+      // Real Razorpay checkout
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error('Failed to load Razorpay');
+
+      const options = {
+        key: orderData.key_id,
+        amount: orderData.order.amount,
+        currency: orderData.order.currency,
+        name: 'GetLocal',
+        description: `${selectedPack} Hiring Credits`,
+        order_id: orderData.order.id,
+        handler: async function (response) {
+          const verifyRes = await fetch('/nextapi/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              employer_id: employerId,
+              credits: selectedPack,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            setCredits(verifyData.new_balance);
+            setShowBuyCredits(false);
+            if (pendingUnlockId) {
+              setTimeout(() => handleUnlock(pendingUnlockId), 300);
+              setPendingUnlockId(null);
+            }
+          }
+        },
+        theme: { color: '#0052CC' },
+        modal: { ondismiss: () => setPaymentLoading(false) },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error('Payment error:', err);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -250,9 +356,9 @@ export default function HirePage() {
               </svg>
               Post Job
             </button>
-            <div className="bg-[#36B37E]/20 text-[#36B37E] px-3 py-1.5 rounded-full text-sm font-medium" data-testid="credit-balance">
-              💰 {credits}
-            </div>
+            <button onClick={() => setShowBuyCredits(true)} className="bg-[#36B37E]/20 text-[#36B37E] px-3 py-1.5 rounded-full text-sm font-medium hover:bg-[#36B37E]/30 transition-all" data-testid="credit-balance">
+              {credits} Credits {credits === 0 && <span className="text-[10px] opacity-80">+ Buy</span>}
+            </button>
           </div>
         </div>
 
@@ -423,6 +529,77 @@ export default function HirePage() {
           })
         )}
       </div>
+
+      {/* Buy Credits Modal */}
+      {showBuyCredits && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" data-testid="buy-credits-modal">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { setShowBuyCredits(false); setPendingUnlockId(null); }} />
+          <div className="relative bg-[#151B2D] rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 border border-white/10 z-10">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-xl font-bold text-white">Buy Credits</h3>
+              <button onClick={() => { setShowBuyCredits(false); setPendingUnlockId(null); }} className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center" data-testid="close-buy-credits">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <p className="text-[#8B95A5] text-sm mb-4">
+              You need credits to unlock candidate profiles. Each unlock costs <span className="text-white font-medium">1 credit</span>.
+            </p>
+
+            <div className="space-y-2 mb-5">
+              {[
+                { credits: 10, price: 500, tag: '' },
+                { credits: 25, price: 1000, tag: 'Popular' },
+                { credits: 50, price: 1750, tag: 'Best Value' },
+              ].map(pack => (
+                <button
+                  key={pack.credits}
+                  onClick={() => setSelectedPack(pack.credits)}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl transition-all border ${
+                    selectedPack === pack.credits
+                      ? 'bg-[#0052CC]/20 border-[#0052CC]'
+                      : 'bg-[#0A0F1C] border-white/10 hover:border-white/20'
+                  }`}
+                  data-testid={`pack-${pack.credits}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                      selectedPack === pack.credits ? 'bg-[#0052CC] text-white' : 'bg-white/10 text-[#8B95A5]'
+                    }`}>
+                      {pack.credits}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-medium">{pack.credits} Credits</p>
+                      <p className="text-[#8B95A5] text-xs">{pack.credits} profile unlocks</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-bold">&#8377;{pack.price}</p>
+                    {pack.tag && <span className="text-[#36B37E] text-xs font-medium">{pack.tag}</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleBuyCredits}
+              disabled={paymentLoading}
+              className="w-full bg-gradient-to-r from-[#0052CC] to-[#36B37E] hover:opacity-90 disabled:opacity-50 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+              data-testid="confirm-buy-btn"
+            >
+              {paymentLoading ? (
+                <><svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20"/></svg>Processing...</>
+              ) : (
+                <>Pay &#8377;{selectedPack === 10 ? '500' : selectedPack === 25 ? '1,000' : '1,750'} &rarr; Get {selectedPack} Credits</>
+              )}
+            </button>
+
+            <p className="text-[#8B95A5] text-xs text-center mt-3">
+              Secured by Razorpay. You&apos;ll be redirected to the payment gateway.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -747,7 +924,7 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  Unlock (10 💰)
+                  Unlock (1 Credit)
                 </>
               )}
             </button>
