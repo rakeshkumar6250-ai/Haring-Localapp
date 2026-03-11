@@ -1,18 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getCandidates } from '@/lib/mongodb';
+import { createReadStream } from 'fs';
+import { access, constants } from 'fs/promises';
+import path from 'path';
+import OpenAI from 'openai';
 
-// Mock names for testing
-const MOCK_NAMES = [
-  'Rajesh Kumar',
-  'Priya Singh', 
-  'Amit Sharma',
-  'Sunita Devi',
-  'Vikram Yadav',
-  'Meera Patel'
-];
-
+// Mock fallback data
+const MOCK_NAMES = ['Rajesh Kumar', 'Priya Singh', 'Amit Sharma', 'Sunita Devi', 'Vikram Yadav', 'Meera Patel'];
 const MOCK_ROLES = ['Driver', 'Cook', 'Security Guard', 'House Helper', 'Delivery Executive'];
-
 const MOCK_SUMMARIES = [
   'Experienced professional with strong communication skills. Has worked in multiple household and commercial settings with excellent references.',
   'Dedicated worker with proven track record in customer-facing roles. Known for punctuality and reliability.',
@@ -21,8 +16,8 @@ const MOCK_SUMMARIES = [
 ];
 
 export async function POST(request) {
-  console.log('[MOCK PROCESS] ========== TRANSCRIPTION REQUEST ==========');
-  
+  console.log('[PROCESS] ========== TRANSCRIPTION REQUEST ==========');
+
   try {
     const body = await request.json();
     const { candidateId } = body;
@@ -31,9 +26,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'candidateId is required' }, { status: 400 });
     }
 
-    console.log('[MOCK PROCESS] Processing candidate:', candidateId);
+    console.log('[PROCESS] Processing candidate:', candidateId);
 
-    // Get candidate from MongoDB
     const candidates = await getCandidates();
     const candidate = await candidates.findOne({ _id: candidateId });
 
@@ -45,60 +39,115 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No audio file for this candidate' }, { status: 400 });
     }
 
-    console.log('[MOCK PROCESS] Audio URL:', candidate.audio_interview_url);
-    console.log('[MOCK PROCESS] Simulating 5 second AI processing delay...');
+    const audioPath = path.join(process.cwd(), 'public', candidate.audio_interview_url);
+    console.log('[PROCESS] Audio path:', audioPath);
 
-    // Simulate AI processing time (5 seconds)
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Try real OpenAI, fall back to mock
+    let result;
+    try {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
-    // Generate mock data
-    const mockName = MOCK_NAMES[Math.floor(Math.random() * MOCK_NAMES.length)];
-    const mockRole = MOCK_ROLES[Math.floor(Math.random() * MOCK_ROLES.length)];
-    const mockExperience = Math.floor(Math.random() * 8) + 1; // 1-8 years
-    const mockSummary = MOCK_SUMMARIES[Math.floor(Math.random() * MOCK_SUMMARIES.length)];
-    
-    const mockTranscript = `[MOCK TRANSCRIPT] My name is ${mockName}. I am looking for work as a ${mockRole}. I have ${mockExperience} years of experience in this field. I am hardworking and reliable.`;
+      await access(audioPath, constants.R_OK);
 
-    console.log('[MOCK PROCESS] Generated mock data:');
-    console.log('[MOCK PROCESS] Name:', mockName);
-    console.log('[MOCK PROCESS] Role:', mockRole);
-    console.log('[MOCK PROCESS] Experience:', mockExperience, 'years');
+      const openai = new OpenAI({ apiKey });
+      const langCode = candidate.lang_code || 'en';
 
-    // Update MongoDB with mock data
+      // Whisper transcription
+      console.log(`[PROCESS] Whisper transcription (lang=${langCode})...`);
+      const transcription = await openai.audio.transcriptions.create({
+        file: createReadStream(audioPath),
+        model: 'whisper-1',
+        language: langCode,
+        response_format: 'text',
+      });
+
+      if (!transcription || transcription.trim().length === 0) {
+        throw new Error('Whisper returned empty transcript');
+      }
+
+      console.log(`[PROCESS] Transcript: ${transcription.substring(0, 200)}...`);
+
+      // GPT-4o-mini extraction
+      console.log('[PROCESS] GPT-4o-mini extraction...');
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `You are a hiring assistant for blue-collar workers in India. Extract candidate info from interview transcripts (which may be in regional Indian languages). Always respond in English. Return ONLY a JSON object with exactly these three fields:
+- "name": the candidate's full name (string)
+- "experience_years": years of work experience (number, 0 if unknown)
+- "professional_summary": a 2-sentence professional summary in English (string)`
+          },
+          { role: 'user', content: `Extract the candidate profile from this interview transcript:\n\n${transcription}` }
+        ],
+        temperature: 0.2,
+      });
+
+      const extracted = JSON.parse(completion.choices[0].message.content);
+
+      result = {
+        name: extracted.name || 'Unknown',
+        role: candidate.role_category || 'General',
+        experience_years: Number(extracted.experience_years) || 0,
+        summary: extracted.professional_summary || 'Profile extracted from voice interview.',
+        transcription,
+        ai_source: 'openai',
+        mock: false,
+      };
+
+    } catch (aiError) {
+      console.error(`[PROCESS] OpenAI failed: ${aiError.message}, using mock data`);
+      result = {
+        name: MOCK_NAMES[Math.floor(Math.random() * MOCK_NAMES.length)],
+        role: MOCK_ROLES[Math.floor(Math.random() * MOCK_ROLES.length)],
+        experience_years: Math.floor(Math.random() * 8) + 1,
+        summary: MOCK_SUMMARIES[Math.floor(Math.random() * MOCK_SUMMARIES.length)],
+        transcription: `[MOCK FALLBACK] OpenAI unavailable: ${aiError.message}`,
+        ai_source: 'mock_fallback',
+        mock: true,
+      };
+    }
+
+    // Update MongoDB
     await candidates.updateOne(
       { _id: candidateId },
       {
         $set: {
-          name: mockName,
-          role_category: mockRole,
-          experience_years: mockExperience,
-          professional_summary: mockSummary,
-          transcription: mockTranscript,
+          name: result.name,
+          role_category: result.role,
+          experience_years: result.experience_years,
+          professional_summary: result.summary,
+          transcription: result.transcription,
           moltbot_processed: true,
+          ai_source: result.ai_source,
           processed_at: new Date()
         }
       }
     );
 
-    console.log('[MOCK PROCESS] ========== SUCCESS ==========');
-    console.log('[MOCK PROCESS] MongoDB updated with mock profile data');
+    console.log('[PROCESS] ========== SUCCESS ==========');
 
     return NextResponse.json({
       success: true,
       candidateId,
-      mock: true,
+      mock: result.mock,
+      ai_source: result.ai_source,
       extracted: {
-        name: mockName,
-        role: mockRole,
-        experience_years: mockExperience,
-        summary: mockSummary
+        name: result.name,
+        role: result.role,
+        experience_years: result.experience_years,
+        summary: result.summary
       },
-      message: 'Mock transcription complete. Ready for real API key connection.'
+      message: result.mock
+        ? 'OpenAI unavailable, used mock data. Profile saved.'
+        : 'Real transcription complete via Whisper + GPT-4o-mini.'
     });
 
   } catch (error) {
-    console.error('[MOCK PROCESS ERROR]', error.message);
-    console.error('[MOCK PROCESS ERROR] Stack:', error.stack);
+    console.error('[PROCESS ERROR]', error.message);
     return NextResponse.json(
       { error: 'Processing failed', details: error.message },
       { status: 500 }

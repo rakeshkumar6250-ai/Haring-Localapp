@@ -1,53 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getCandidates } from '@/lib/mongodb';
-import { writeFile, mkdir, access, constants } from 'fs/promises';
+import { writeFile, mkdir, access, constants, readFile } from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import OpenAI from 'openai';
 
-// Mock data for automatic transcription processing - EXPANDED for regional languages
-const MOCK_NAMES = {
-  en: ['Rajesh Kumar', 'Priya Singh', 'Amit Sharma', 'Sunita Devi', 'Vikram Yadav', 'Meera Patel'],
-  hi: ['राजेश कुमार', 'प्रिया सिंह', 'अमित शर्मा', 'सुनीता देवी', 'विक्रम यादव', 'मीरा पटेल'],
-  te: ['రాజేష్ కుమార్', 'ప్రియ సింగ్', 'అమిత్ శర్మ', 'సునీత దేవి', 'విక్రమ్ యాదవ్', 'మీరా పటేల్'],
-  // South India
-  ta: ['ராஜேஷ் குமார்', 'பிரியா சிங்', 'அமித் சர்மா', 'சுனிதா தேவி', 'விக்ரம் யாதவ்', 'மீரா பட்டேல்'],
-  kn: ['ರಾಜೇಶ್ ಕುಮಾರ್', 'ಪ್ರಿಯಾ ಸಿಂಗ್', 'ಅಮಿತ್ ಶರ್ಮಾ', 'ಸುನೀತಾ ದೇವಿ', 'ವಿಕ್ರಮ್ ಯಾದವ್', 'ಮೀರಾ ಪಟೇಲ್'],
-  ml: ['രാജേഷ് കുമാർ', 'പ്രിയ സിംഗ്', 'അമിത് ശർമ്മ', 'സുനിത ദേവി', 'വിക്രം യാദവ്', 'മീര പട്ടേൽ'],
-  // East India
-  bn: ['রাজেশ কুমার', 'প্রিয়া সিং', 'অমিত শর্মা', 'সুনীতা দেবী', 'বিক্রম যাদব', 'মীরা প্যাটেল'],
-  or: ['ରାଜେଶ କୁମାର', 'ପ୍ରିୟା ସିଂ', 'ଅମିତ ଶର୍ମା', 'ସୁନୀତା ଦେବୀ', 'ବିକ୍ରମ ଯାଦବ', 'ମୀରା ପଟେଲ'],
-  as: ['ৰাজেশ কুমাৰ', 'প্ৰিয়া সিং', 'অমিত শৰ্মা', 'সুনীতা দেৱী', 'বিক্ৰম যাদৱ', 'মীৰা পেটেল']
-};
+// ─── Mock fallback data (used when OpenAI API fails) ───
+const MOCK_NAMES = ['Rajesh Kumar', 'Priya Singh', 'Amit Sharma', 'Sunita Devi', 'Vikram Yadav', 'Meera Patel'];
+const MOCK_SUMMARIES = [
+  'Experienced professional with strong communication skills. Has worked in multiple household and commercial settings.',
+  'Dedicated worker with proven track record in customer-facing roles. Known for punctuality and reliability.',
+  'Skilled candidate with hands-on experience in the service industry. Demonstrates strong work ethic.',
+  'Reliable professional seeking stable employment. Previous employers praise attention to detail.'
+];
 
-const MOCK_SUMMARIES = {
-  en: [
-    'Experienced professional with strong communication skills. Has worked in multiple household and commercial settings.',
-    'Dedicated worker with proven track record in customer-facing roles. Known for punctuality and reliability.',
-    'Skilled candidate with hands-on experience in the service industry. Demonstrates strong work ethic.',
-    'Reliable professional seeking stable employment. Previous employers praise attention to detail.'
-  ],
-  hi: [
-    'अनुभवी पेशेवर जिसके पास मजबूत संचार कौशल है। कई घरेलू और व्यावसायिक सेटिंग्स में काम किया है।',
-    'समर्पित कार्यकर्ता जिसका ग्राहक-सामना भूमिकाओं में सिद्ध ट्रैक रिकॉर्ड है।',
-    'सेवा उद्योग में व्यावहारिक अनुभव वाले कुशल उम्मीदवार।',
-    'स्थिर रोजगार की तलाश में विश्वसनीय पेशेवर।'
-  ],
-  te: [
-    'బలమైన కమ్యూనికేషన్ నైపుణ్యాలతో అనుభవజ్ఞుడైన వృత్తి నిపుణుడు.',
-    'కస్టమర్-ఫేసింగ్ పాత్రల్లో నిరూపితమైన ట్రాక్ రికార్డ్ ఉన్న అంకితభావంతో పనిచేసే వ్యక్తి.',
-    'సర్వీస్ ఇండస్ట్రీలో అనుభవం ఉన్న నైపుణ్యం కలిగిన అభ్యర్థి.',
-    'స్థిరమైన ఉద్యోగం కోరుతున్న నమ్మకమైన వృత్తి నిపుణుడు.'
-  ],
-  // Default English summaries for other languages
-  ta: ['அனுபவமுள்ள நிபுணர். வீட்டு மற்றும் வணிக சூழலில் பணிபுரிந்துள்ளார்.', 'நம்பகமான பணியாளர். சரியான நேரத்தில் வருவதில் புகழ்பெற்றவர்.'],
-  kn: ['ಅನುಭವಿ ವೃತ್ತಿಪರ. ಬಹು ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಕೆಲಸ ಮಾಡಿದ್ದಾರೆ.', 'ನಂಬಿಗಸ್ತ ಕೆಲಸಗಾರ. ಸಮಯಪಾಲನೆಗೆ ಹೆಸರಾಗಿದ್ದಾರೆ.'],
-  ml: ['അനുഭവസമ്പന്നനായ പ്രൊഫഷണൽ. വീട്, വാണിജ്യ സെറ്റിംഗുകളിൽ ജോലി ചെയ്തിട്ടുണ്ട്.', 'വിശ്വസനീയമായ തൊഴിലാളി.'],
-  bn: ['অভিজ্ঞ পেশাদার। একাধিক সেটিংসে কাজ করেছেন।', 'নির্ভরযোগ্য কর্মী। সময়ানুবর্তিতার জন্য পরিচিত।'],
-  or: ['ଅଭିଜ୍ଞ ବୃତ୍ତିଜୀବୀ। ଅନେକ ସେଟିଂସରେ କାମ କରିଛନ୍ତି।', 'ନିର୍ଭରଯୋଗ୍ୟ କର୍ମଚାରୀ।'],
-  as: ['অভিজ্ঞ পেছাদাৰ। একাধিক ছেটিংছত কাম কৰিছে।', 'নিৰ্ভৰযোগ্য কৰ্মী।']
-};
-
-// Generate mock Indian phone number
 function generateMockPhone() {
   const prefixes = ['98765', '99887', '97654', '96543', '95432', '94321', '93210', '92109'];
   const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
@@ -55,56 +22,118 @@ function generateMockPhone() {
   return `+91 ${prefix} ${suffix}`;
 }
 
-// Background mock transcription processor
-async function processMockTranscription(candidateId, langCode) {
-  console.log(`[MOLTBOT] Starting background mock transcription for ${candidateId} (lang: ${langCode})`);
-  
-  // Wait 5 seconds to simulate AI processing
-  await new Promise(resolve => setTimeout(resolve, 5000));
-  
+function getMockProfile() {
+  return {
+    name: MOCK_NAMES[Math.floor(Math.random() * MOCK_NAMES.length)],
+    experience_years: Math.floor(Math.random() * 8) + 1,
+    professional_summary: MOCK_SUMMARIES[Math.floor(Math.random() * MOCK_SUMMARIES.length)],
+  };
+}
+
+// ─── Real OpenAI processing: Whisper → GPT-4o-mini ───
+async function processWithOpenAI(candidateId, langCode, filePath) {
+  console.log(`[OPENAI] Starting real transcription for ${candidateId} (lang: ${langCode})`);
+
   try {
-    const candidates = await getCandidates();
-    const candidate = await candidates.findOne({ _id: candidateId });
-    
-    if (!candidate) {
-      console.error(`[MOLTBOT] Candidate ${candidateId} not found`);
-      return;
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY not set');
+
+    const openai = new OpenAI({ apiKey });
+
+    // Step 1: Whisper transcription
+    console.log(`[OPENAI] Step 1 - Sending audio to Whisper (whisper-1, lang=${langCode})...`);
+    const transcription = await openai.audio.transcriptions.create({
+      file: createReadStream(filePath),
+      model: 'whisper-1',
+      language: langCode,
+      response_format: 'text',
+    });
+    console.log(`[OPENAI] Whisper transcript (${transcription.length} chars): ${transcription.substring(0, 200)}...`);
+
+    if (!transcription || transcription.trim().length === 0) {
+      throw new Error('Whisper returned empty transcript');
     }
-    
-    // Select mock data based on language
-    const lang = ['hi', 'te'].includes(langCode) ? langCode : 'en';
-    const names = MOCK_NAMES[lang];
-    const summaries = MOCK_SUMMARIES[lang];
-    
-    const mockName = names[Math.floor(Math.random() * names.length)];
-    const mockExperience = Math.floor(Math.random() * 8) + 1; // 1-8 years
-    const mockSummary = summaries[Math.floor(Math.random() * summaries.length)];
-    const mockPhone = generateMockPhone(); // Generate mock phone number
-    
-    // Update MongoDB with extracted data including phone
+
+    // Step 2: GPT-4o-mini extraction
+    console.log(`[OPENAI] Step 2 - Extracting profile via GPT-4o-mini...`);
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: `You are a hiring assistant for blue-collar workers in India. Extract candidate info from interview transcripts (which may be in regional Indian languages). Always respond in English. Return ONLY a JSON object with exactly these three fields:
+- "name": the candidate's full name (string)
+- "experience_years": years of work experience (number, 0 if unknown)
+- "professional_summary": a 2-sentence professional summary in English (string)`
+        },
+        {
+          role: 'user',
+          content: `Extract the candidate profile from this interview transcript:\n\n${transcription}`
+        }
+      ],
+      temperature: 0.2,
+    });
+
+    const raw = completion.choices[0].message.content;
+    console.log(`[OPENAI] GPT-4o-mini raw response: ${raw}`);
+    const extracted = JSON.parse(raw);
+
+    // Validate required fields
+    if (!extracted.name || typeof extracted.name !== 'string') throw new Error('Missing name in GPT response');
+    const expYears = Number(extracted.experience_years) || 0;
+    const summary = extracted.professional_summary || 'Profile extracted from voice interview.';
+
+    // Step 3: Update MongoDB
+    const candidates = await getCandidates();
     await candidates.updateOne(
       { _id: candidateId },
       {
         $set: {
-          name: mockName,
-          phone: mockPhone,
-          experience_years: mockExperience,
-          professional_summary: mockSummary,
-          transcription: `[MOCK - ${langCode.toUpperCase()}] Auto-transcribed interview for ${mockName}`,
+          name: extracted.name,
+          phone: generateMockPhone(),
+          experience_years: expYears,
+          professional_summary: summary,
+          transcription: transcription,
           moltbot_processed: true,
+          ai_source: 'openai',
           processed_at: new Date()
         }
       }
     );
-    
-    console.log(`[MOLTBOT] ✓ Successfully processed ${candidateId}`);
-    console.log(`[MOLTBOT]   Name: ${mockName}`);
-    console.log(`[MOLTBOT]   Phone: ${mockPhone}`);
-    console.log(`[MOLTBOT]   Experience: ${mockExperience} years`);
-    console.log(`[MOLTBOT]   Summary: ${mockSummary.substring(0, 50)}...`);
-    
+
+    console.log(`[OPENAI] SUCCESS for ${candidateId}`);
+    console.log(`[OPENAI]   Name: ${extracted.name}`);
+    console.log(`[OPENAI]   Experience: ${expYears} years`);
+    console.log(`[OPENAI]   Summary: ${summary.substring(0, 80)}...`);
+
   } catch (error) {
-    console.error(`[MOLTBOT] Error processing ${candidateId}:`, error.message);
+    // ─── FALLBACK: use mock data so the UI never crashes ───
+    console.error(`[OPENAI] FAILED for ${candidateId}: ${error.message}`);
+    console.log(`[OPENAI] Falling back to mock data...`);
+
+    const mock = getMockProfile();
+    try {
+      const candidates = await getCandidates();
+      await candidates.updateOne(
+        { _id: candidateId },
+        {
+          $set: {
+            name: mock.name,
+            phone: generateMockPhone(),
+            experience_years: mock.experience_years,
+            professional_summary: mock.professional_summary,
+            transcription: `[MOCK FALLBACK - ${langCode.toUpperCase()}] OpenAI unavailable, used mock data.`,
+            moltbot_processed: true,
+            ai_source: 'mock_fallback',
+            processed_at: new Date()
+          }
+        }
+      );
+      console.log(`[OPENAI] Fallback mock data saved for ${candidateId}: ${mock.name}`);
+    } catch (dbErr) {
+      console.error(`[OPENAI] Even fallback DB update failed: ${dbErr.message}`);
+    }
   }
 }
 
@@ -294,15 +323,15 @@ export async function POST(request) {
     console.log('[UPLOAD] ========== SUCCESS ==========');
     console.log(`[MOLTBOT HOOK] Ready for processing: /audio/${fileName}`);
     
-    // Trigger background mock transcription (non-blocking)
+    // Trigger real OpenAI transcription (non-blocking)
     // Only trigger background processing for voice interviews (not manual entries)
     if (interviewType !== 'manual') {
-      processMockTranscription(candidateId, langCode).catch(err => {
-        console.error('[MOLTBOT] Background processing error:', err.message);
+      processWithOpenAI(candidateId, langCode, filePath).catch(err => {
+        console.error('[OPENAI] Background processing error:', err.message);
       });
-      console.log(`[MOLTBOT] Background transcription queued for ${candidateId}`);
+      console.log(`[OPENAI] Background transcription queued for ${candidateId}`);
     } else {
-      console.log(`[MOLTBOT] Skipping background processing for manual entry: ${candidateId}`);
+      console.log(`[OPENAI] Skipping background processing for manual entry: ${candidateId}`);
     }
 
     return NextResponse.json({
