@@ -44,4 +44,10 @@ export async function getEmployers() {
   return db.collection('employers');
 }
 
+// Outgoing notification log
+export async function getOutgoingLog() {
+  const db = await getDb();
+  return db.collection('outgoing_log');
+}
+
 export default clientPromise;

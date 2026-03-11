@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getJobs, getEmployers } from '@/lib/mongodb';
 import { v4 as uuidv4 } from 'uuid';
+import { onJobCreated } from '@/lib/matching';
 
 const JOB_CATEGORIES = [
   'Driver', 'Cook', 'Delivery', 'Security Guard', 'House Helper', 
@@ -88,6 +89,11 @@ export async function POST(request) {
 
     await jobs.insertOne(job);
     console.log(`[JOB] Created: ${job.title} (${job.category}) by employer ${job.employer_id || 'anonymous'}`);
+
+    // Trigger candidate matching (non-blocking)
+    onJobCreated(job).catch(err =>
+      console.error('[MATCH] Job match trigger error:', err.message)
+    );
 
     return NextResponse.json({ success: true, job, message: 'Job posted successfully' }, { status: 201 });
   } catch (error) {

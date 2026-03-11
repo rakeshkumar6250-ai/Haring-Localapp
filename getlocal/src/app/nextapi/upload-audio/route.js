@@ -5,6 +5,7 @@ import { createReadStream } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
+import { onCandidateCreatedOrUpdated } from '@/lib/matching';
 
 // ─── Mock fallback data (used when OpenAI API fails) ───
 const MOCK_NAMES = ['Rajesh Kumar', 'Priya Singh', 'Amit Sharma', 'Sunita Devi', 'Vikram Yadav', 'Meera Patel'];
@@ -106,6 +107,14 @@ async function processWithOpenAI(candidateId, langCode, filePath) {
     console.log(`[OPENAI]   Name: ${extracted.name}`);
     console.log(`[OPENAI]   Experience: ${expYears} years`);
     console.log(`[OPENAI]   Summary: ${summary.substring(0, 80)}...`);
+
+    // Trigger matching after AI processing completes
+    const updatedCandidate = await candidates.findOne({ _id: candidateId });
+    if (updatedCandidate) {
+      onCandidateCreatedOrUpdated(updatedCandidate).catch(err =>
+        console.error('[MATCH] Voice candidate match trigger error:', err.message)
+      );
+    }
 
   } catch (error) {
     // ─── FALLBACK: use mock data so the UI never crashes ───
@@ -339,6 +348,14 @@ export async function POST(request) {
       console.log(`[OPENAI] Background transcription queued for ${candidateId}`);
     } else {
       console.log(`[OPENAI] Skipping background processing for manual entry: ${candidateId}`);
+      // For manual entries, trigger matching immediately since profile is complete
+      const candidates = await getCandidates();
+      const savedCandidate = await candidates.findOne({ _id: candidateId });
+      if (savedCandidate) {
+        onCandidateCreatedOrUpdated(savedCandidate).catch(err =>
+          console.error('[MATCH] Manual candidate match trigger error:', err.message)
+        );
+      }
     }
 
     return NextResponse.json({
