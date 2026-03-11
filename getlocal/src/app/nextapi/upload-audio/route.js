@@ -219,6 +219,9 @@ export async function POST(request) {
     const extractedSummary = formData.get('extracted_summary') || null;
     const address = formData.get('address') || '';
     const willRelocate = formData.get('will_relocate') === 'true';
+    const educationLevel = formData.get('education_level') || '';
+    const englishLevel = formData.get('english_level') || '';
+    const experienceType = formData.get('experience_type') || 'Fresher';
     
     console.log('[UPLOAD] Metadata:', JSON.stringify({ 
       langCode, interviewType, questionsAnswered, lat, lng, address, willRelocate 
@@ -283,7 +286,7 @@ export async function POST(request) {
         location: { lat, lng },
         address: address,
         will_relocate: willRelocate,
-        trust_score: 100, // NEW: Default trust score
+        trust_score: 100,
         role_category: extractedRole || 'General',
         audio_interview_url: isManualEntry ? null : `/audio/${fileName}`,
         language: language,
@@ -295,7 +298,11 @@ export async function POST(request) {
           file_size_bytes: audioFile.size,
           recorded_at: new Date()
         },
-        is_verified: false,
+        verification_status: 'Unverified',
+        id_document_url: null,
+        education_level: educationLevel,
+        english_level: englishLevel,
+        experience_type: experienceType,
         created_at: new Date(),
         transcription: isManualEntry ? `Manual entry by ${extractedName}` : null,
         moltbot_processed: isManualEntry,

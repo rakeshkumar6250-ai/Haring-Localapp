@@ -185,12 +185,22 @@ export default function JoinPage() {
     name: '',
     experience_years: '',
     summary: '',
-    role_category: ''
+    role_category: '',
+    education_level: '',
+    english_level: '',
+    experience_type: 'Fresher'
   });
   
   // Location & Relocation fields (common to both modes)
   const [address, setAddress] = useState('');
   const [willRelocate, setWillRelocate] = useState(false);
+
+  // KYC fields (common to both modes)
+  const [educationLevel, setEducationLevel] = useState('');
+  const [englishLevel, setEnglishLevel] = useState('');
+  const [experienceType, setExperienceType] = useState('Fresher');
+  const [idFile, setIdFile] = useState(null);
+  const [idUploading, setIdUploading] = useState(false);
   
   // Audio recording refs
   const mediaRecorderRef = useRef(null);
@@ -365,6 +375,9 @@ export default function JoinPage() {
       formData.append('extracted_summary', manualForm.summary);
       formData.append('address', address);
       formData.append('will_relocate', willRelocate.toString());
+      formData.append('education_level', manualForm.education_level);
+      formData.append('english_level', manualForm.english_level);
+      formData.append('experience_type', manualForm.experience_type);
       
       if (location) {
         formData.append('lat', location.lat.toString());
@@ -385,6 +398,12 @@ export default function JoinPage() {
 
       setUploadProgress(100);
       setCandidateId(data.candidateId);
+
+      // If ID file was selected, upload it
+      if (idFile && data.candidateId) {
+        await uploadIdDocument(data.candidateId);
+      }
+
       setTimeout(() => setPhase('success'), 1000);
     } catch (err) {
       setErrorMsg(err.message);
@@ -414,6 +433,9 @@ export default function JoinPage() {
       formData.append('questions_answered', QUESTIONS.length.toString());
       formData.append('address', address);
       formData.append('will_relocate', willRelocate.toString());
+      formData.append('education_level', educationLevel);
+      formData.append('english_level', englishLevel);
+      formData.append('experience_type', experienceType);
       
       if (location) {
         formData.append('lat', location.lat.toString());
@@ -434,10 +456,31 @@ export default function JoinPage() {
 
       setUploadProgress(100);
       setCandidateId(data.candidateId);
+
+      // If ID file was selected, upload it
+      if (idFile && data.candidateId) {
+        await uploadIdDocument(data.candidateId);
+      }
+
       setTimeout(() => setPhase('success'), 1500);
     } catch (err) {
       setErrorMsg(err.message);
       setPhase('error');
+    }
+  };
+
+  // Upload ID document for KYC
+  const uploadIdDocument = async (cid) => {
+    try {
+      setIdUploading(true);
+      const fd = new FormData();
+      fd.append('document', idFile);
+      fd.append('candidate_id', cid);
+      await fetch('/nextapi/candidates/upload-id', { method: 'POST', body: fd });
+    } catch (err) {
+      console.error('ID upload failed:', err);
+    } finally {
+      setIdUploading(false);
     }
   };
 
@@ -455,7 +498,11 @@ export default function JoinPage() {
     setUploadProgress(0);
     setAddress('');
     setWillRelocate(false);
-    setManualForm({ name: '', experience_years: '', summary: '', role_category: '' });
+    setEducationLevel('');
+    setEnglishLevel('');
+    setExperienceType('Fresher');
+    setIdFile(null);
+    setManualForm({ name: '', experience_years: '', summary: '', role_category: '', education_level: '', english_level: '', experience_type: 'Fresher' });
     allRecordingsRef.current = [];
   };
 
@@ -610,6 +657,58 @@ export default function JoinPage() {
               />
             </div>
 
+            {/* Education Level */}
+            <div>
+              <label className="block text-sm text-[#8B95A5] mb-2">Education Level</label>
+              <select
+                value={manualForm.education_level}
+                onChange={(e) => setManualForm(p => ({ ...p, education_level: e.target.value }))}
+                className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-3 text-white"
+                data-testid="manual-education-select"
+              >
+                <option value="">Select education</option>
+                {['10th Or Below', '12th Pass', 'Diploma', 'ITI', 'Graduate', 'Post Graduate'].map(e => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* English Level */}
+            <div>
+              <label className="block text-sm text-[#8B95A5] mb-2">English Level</label>
+              <select
+                value={manualForm.english_level}
+                onChange={(e) => setManualForm(p => ({ ...p, english_level: e.target.value }))}
+                className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-3 text-white"
+                data-testid="manual-english-select"
+              >
+                <option value="">Select english level</option>
+                {['No English', 'Basic English', 'Good English'].map(e => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Experience Type */}
+            <div>
+              <label className="block text-sm text-[#8B95A5] mb-2">Experience</label>
+              <div className="flex gap-3">
+                {['Fresher', 'Experienced'].map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setManualForm(p => ({ ...p, experience_type: t }))}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${
+                      manualForm.experience_type === t ? 'bg-[#0052CC] text-white' : 'bg-[#151B2D] text-[#8B95A5] border border-white/10'
+                    }`}
+                    data-testid={`manual-exp-${t.toLowerCase()}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Address */}
             <div>
               <label className="block text-sm text-[#8B95A5] mb-2">
@@ -643,6 +742,30 @@ export default function JoinPage() {
                     willRelocate ? 'translate-x-7' : 'translate-x-1'
                   }`} />
                 </button>
+              </div>
+            </div>
+
+            {/* Boost Your Profile - ID Upload */}
+            <div className="bg-gradient-to-br from-[#0052CC]/10 to-[#36B37E]/5 border border-[#0052CC]/20 rounded-xl p-4">
+              <p className="text-white font-medium mb-1">Boost Your Profile</p>
+              <p className="text-[#8B95A5] text-xs mb-3">Upload a Govt ID (Aadhaar / Voter ID / PAN) to get a verified badge</p>
+              <div
+                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${idFile ? 'border-[#36B37E]/50 bg-[#36B37E]/5' : 'border-white/10 hover:border-[#0052CC]/50'}`}
+                onClick={() => document.getElementById('manual-id-input').click()}
+                data-testid="manual-id-upload"
+              >
+                <input id="manual-id-input" type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setIdFile(e.target.files?.[0] || null)} />
+                {idFile ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#36B37E" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span className="text-[#36B37E] text-sm font-medium">{idFile.name}</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B95A5" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span className="text-[#8B95A5] text-sm">Tap to upload (optional)</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -780,6 +903,58 @@ export default function JoinPage() {
               />
             </div>
 
+            {/* Education Level */}
+            <div>
+              <label className="block text-sm text-[#8B95A5] mb-2">Education Level</label>
+              <select
+                value={educationLevel}
+                onChange={(e) => setEducationLevel(e.target.value)}
+                className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-3 text-white"
+                data-testid="voice-education-select"
+              >
+                <option value="">Select education</option>
+                {['10th Or Below', '12th Pass', 'Diploma', 'ITI', 'Graduate', 'Post Graduate'].map(e => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* English Level */}
+            <div>
+              <label className="block text-sm text-[#8B95A5] mb-2">English Level</label>
+              <select
+                value={englishLevel}
+                onChange={(e) => setEnglishLevel(e.target.value)}
+                className="w-full bg-[#151B2D] border border-white/10 rounded-xl px-4 py-3 text-white"
+                data-testid="voice-english-select"
+              >
+                <option value="">Select english level</option>
+                {['No English', 'Basic English', 'Good English'].map(e => (
+                  <option key={e} value={e}>{e}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Experience Type */}
+            <div>
+              <label className="block text-sm text-[#8B95A5] mb-2">Experience</label>
+              <div className="flex gap-3">
+                {['Fresher', 'Experienced'].map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setExperienceType(t)}
+                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${
+                      experienceType === t ? 'bg-[#0052CC] text-white' : 'bg-[#151B2D] text-[#8B95A5] border border-white/10'
+                    }`}
+                    data-testid={`voice-exp-${t.toLowerCase()}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Relocation Toggle */}
             <div className="bg-[#151B2D] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between">
@@ -798,6 +973,27 @@ export default function JoinPage() {
                     willRelocate ? 'translate-x-7' : 'translate-x-1'
                   }`} />
                 </button>
+              </div>
+            </div>
+
+            {/* Boost Your Profile - ID Upload */}
+            <div className="bg-gradient-to-br from-[#0052CC]/10 to-[#36B37E]/5 border border-[#0052CC]/20 rounded-xl p-4">
+              <p className="text-white font-medium mb-1">Boost Your Profile</p>
+              <p className="text-[#8B95A5] text-xs mb-3">Upload a Govt ID to get verified</p>
+              <div
+                className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${idFile ? 'border-[#36B37E]/50 bg-[#36B37E]/5' : 'border-white/10 hover:border-[#0052CC]/50'}`}
+                onClick={() => document.getElementById('voice-id-input').click()}
+                data-testid="voice-id-upload"
+              >
+                <input id="voice-id-input" type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setIdFile(e.target.files?.[0] || null)} />
+                {idFile ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#36B37E" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span className="text-[#36B37E] text-sm font-medium">{idFile.name}</span>
+                  </div>
+                ) : (
+                  <span className="text-[#8B95A5] text-sm">Tap to upload (optional)</span>
+                )}
               </div>
             </div>
 

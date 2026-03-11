@@ -20,7 +20,12 @@ export default function HirePage() {
   const [processing, setProcessing] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [reportingNoShow, setReportingNoShow] = useState(null);
-  const [trustScores, setTrustScores] = useState({}); // Track trust scores locally
+  const [trustScores, setTrustScores] = useState({});
+  // KYC filter state
+  const [eduFilter, setEduFilter] = useState('All');
+  const [engFilter, setEngFilter] = useState('All');
+  const [expFilter, setExpFilter] = useState('All');
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   // Get user location
   useEffect(() => {
@@ -55,7 +60,13 @@ export default function HirePage() {
   // Fetch candidates with auto-refresh
   const fetchCandidates = useCallback(async () => {
     try {
-      const res = await fetch('/nextapi/candidates');
+      const params = new URLSearchParams();
+      if (eduFilter !== 'All') params.set('education', eduFilter);
+      if (engFilter !== 'All') params.set('english', engFilter);
+      if (expFilter !== 'All') params.set('experience', expFilter);
+      if (verifiedOnly) params.set('verified', 'true');
+      const qs = params.toString();
+      const res = await fetch(`/nextapi/candidates${qs ? '?' + qs : ''}`);
       const data = await res.json();
       const sorted = (data.candidates || []).sort((a, b) => 
         new Date(b.created_at) - new Date(a.created_at)
@@ -67,7 +78,7 @@ export default function HirePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [eduFilter, engFilter, expFilter, verifiedOnly]);
 
   const fetchCredits = useCallback(async () => {
     try {
@@ -325,6 +336,32 @@ export default function HirePage() {
           />
           <span className="text-sm font-medium min-w-[50px]">{distanceFilter} km</span>
         </div>
+
+        {/* Candidate Filter Bar */}
+        <div className="mt-4 flex flex-wrap gap-2 items-center">
+          <select value={eduFilter} onChange={(e) => setEduFilter(e.target.value)} className="bg-[#151B2D] border border-white/10 rounded-lg px-3 py-2 text-sm text-white" data-testid="filter-education">
+            <option value="All">Education</option>
+            {['10th Or Below', '12th Pass', 'Diploma', 'ITI', 'Graduate', 'Post Graduate'].map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <select value={engFilter} onChange={(e) => setEngFilter(e.target.value)} className="bg-[#151B2D] border border-white/10 rounded-lg px-3 py-2 text-sm text-white" data-testid="filter-english">
+            <option value="All">English</option>
+            {['No English', 'Basic English', 'Good English'].map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <select value={expFilter} onChange={(e) => setExpFilter(e.target.value)} className="bg-[#151B2D] border border-white/10 rounded-lg px-3 py-2 text-sm text-white" data-testid="filter-experience">
+            <option value="All">Experience</option>
+            {['Fresher', 'Experienced'].map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <button
+            onClick={() => setVerifiedOnly(!verifiedOnly)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+              verifiedOnly ? 'bg-[#36B37E] text-white' : 'bg-[#151B2D] text-[#8B95A5] border border-white/10'
+            }`}
+            data-testid="filter-verified"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            Verified Only
+          </button>
+        </div>
       </header>
 
       {/* Candidates List */}
@@ -432,7 +469,13 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
           )}
           {isProcessed && (
             <span className="bg-[#0052CC] text-white text-xs px-2 py-1 rounded-full font-medium">
-              ✓ AI Processed
+              AI Processed
+            </span>
+          )}
+          {candidate.verification_status === 'Verified' && (
+            <span className="bg-[#36B37E]/20 text-[#36B37E] text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1" data-testid="verified-identity-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+              Verified Identity
             </span>
           )}
           {!isProcessed && candidate.audio_interview_url && (
@@ -515,6 +558,20 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
             </svg>
             {candidate.address}
           </p>
+        )}
+        {/* Education / English / Experience tags */}
+        {(candidate.education_level || candidate.english_level || candidate.experience_type) && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {candidate.education_level && (
+              <span className="bg-[#151B2D] border border-white/10 text-[#8B95A5] text-xs px-2 py-1 rounded-lg" data-testid="candidate-education">{candidate.education_level}</span>
+            )}
+            {candidate.english_level && (
+              <span className="bg-[#151B2D] border border-white/10 text-[#8B95A5] text-xs px-2 py-1 rounded-lg" data-testid="candidate-english">{candidate.english_level}</span>
+            )}
+            {candidate.experience_type && (
+              <span className="bg-[#151B2D] border border-white/10 text-[#8B95A5] text-xs px-2 py-1 rounded-lg" data-testid="candidate-experience-type">{candidate.experience_type}</span>
+            )}
+          </div>
         )}
       </div>
 
