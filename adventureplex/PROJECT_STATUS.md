@@ -54,7 +54,7 @@ All four phases have been implemented:
 
 ### Live Preview URL
 ```
-https://hire-nearby-5.preview.emergentagent.com
+https://credit-hub-37.preview.emergentagent.com
 ```
 
 ### Key Routes
