@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { calculateDistance, maskPhone, formatDistance, calculateMatchScore } from '@/lib/utils';
+import { calculateDistance, maskPhone, formatDistance } from '@/lib/utils';
+import { calculateDetailedMatchScore } from '@/lib/matchScore';
 
 export default function HirePage() {
   const router = useRouter();
@@ -316,8 +317,6 @@ export default function HirePage() {
   };
 
   // Filter candidates based on active job or manual filters
-  const jobExpRequirement = activeJob?.required_experience || 3;
-  
   const filteredCandidates = candidates
     .map(c => {
       if (!userLocation || !c.location) return { ...c, distance: 999 };
@@ -356,8 +355,10 @@ export default function HirePage() {
               </svg>
               Post Job
             </button>
-            <button onClick={() => setShowBuyCredits(true)} className="bg-[#36B37E]/20 text-[#36B37E] px-3 py-1.5 rounded-full text-sm font-medium hover:bg-[#36B37E]/30 transition-all" data-testid="credit-balance">
-              {credits} Credits {credits === 0 && <span className="text-[10px] opacity-80">+ Buy</span>}
+            <button onClick={() => setShowBuyCredits(true)} className="bg-gradient-to-r from-[#D4A017]/20 to-[#F5C518]/20 text-[#F5C518] border border-[#D4A017]/40 px-3 py-1.5 rounded-full text-sm font-bold hover:from-[#D4A017]/30 hover:to-[#F5C518]/30 transition-all flex items-center gap-1.5" data-testid="credit-balance">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+              {credits} Credits
+              {credits < 3 && <span className="text-[10px] bg-[#D4A017] text-[#1A1A1A] px-1.5 py-0.5 rounded-full font-bold ml-1">Buy More</span>}
             </button>
           </div>
         </div>
@@ -502,7 +503,9 @@ export default function HirePage() {
             const isNew = candidate.created_at && 
               (new Date() - new Date(candidate.created_at)) < 60000;
             const isProcessed = candidate.moltbot_processed;
-            const matchScore = calculateMatchScore(candidate.experience_years, jobExpRequirement);
+            const matchResult = activeJob 
+              ? calculateDetailedMatchScore(activeJob, candidate)
+              : { score: 0, matched: [], missing: [] };
             const revealedPhone = unlockedPhones[candidate._id] || candidate.phone;
             
             const trustScore = trustScores[candidate._id] ?? candidate.trust_score ?? 100;
@@ -514,7 +517,8 @@ export default function HirePage() {
                 isUnlocked={isUnlocked}
                 isNew={isNew}
                 isProcessed={isProcessed}
-                matchScore={matchScore}
+                matchResult={matchResult}
+                hasActiveJob={!!activeJob}
                 trustScore={trustScore}
                 revealedPhone={revealedPhone}
                 whatsappLink={getWhatsAppLink(revealedPhone, candidate.name)}
@@ -549,8 +553,7 @@ export default function HirePage() {
             <div className="space-y-2 mb-5">
               {[
                 { credits: 10, price: 500, tag: '' },
-                { credits: 25, price: 1000, tag: 'Popular' },
-                { credits: 50, price: 1750, tag: 'Best Value' },
+                { credits: 25, price: 1000, tag: 'Best Value' },
               ].map(pack => (
                 <button
                   key={pack.credits}
@@ -590,7 +593,7 @@ export default function HirePage() {
               {paymentLoading ? (
                 <><svg className="animate-spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20"/></svg>Processing...</>
               ) : (
-                <>Pay &#8377;{selectedPack === 10 ? '500' : selectedPack === 25 ? '1,000' : '1,750'} &rarr; Get {selectedPack} Credits</>
+                <>Pay &#8377;{selectedPack === 10 ? '500' : '1,000'} &rarr; Get {selectedPack} Credits</>
               )}
             </button>
 
@@ -604,10 +607,13 @@ export default function HirePage() {
   );
 }
 
-function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, trustScore, revealedPhone, whatsappLink, onUnlock, onProcess, onReportNoShow, unlocking, processing, reportingNoShow }) {
+function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchResult, hasActiveJob, trustScore, revealedPhone, whatsappLink, onUnlock, onProcess, onReportNoShow, unlocking, processing, reportingNoShow }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showMatchDetails, setShowMatchDetails] = useState(false);
+
+  const matchScore = matchResult.score;
 
   // Trust Score color
   const getTrustScoreColor = (score) => {
@@ -657,7 +663,7 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
           )}
           {!isProcessed && candidate.audio_interview_url && (
             <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-1 rounded-full font-medium animate-pulse">
-              ⏳ Processing...
+              Processing...
             </span>
           )}
         </div>
@@ -675,24 +681,76 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
               {trustScore}%
             </div>
           )}
-          {/* Smart Match Score */}
-          {isProcessed && matchScore > 0 && (
-            <div 
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
-                matchScore >= 85 ? 'bg-[#36B37E]/20 text-[#36B37E]' : 
-                matchScore >= 70 ? 'bg-amber-500/20 text-amber-400' : 
-                'bg-red-500/20 text-red-400'
-              }`}
-              data-testid="match-score"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-              </svg>
-              {matchScore}% Match
+          {/* Match Score Badge - prominent gold/green */}
+          {hasActiveJob && matchScore > 0 && (
+            <div className="relative" data-testid="match-score-container">
+              <div 
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-105 ${
+                  matchScore >= 85 ? 'bg-[#36B37E]/20 text-[#36B37E] ring-1 ring-[#36B37E]/40' : 
+                  matchScore >= 70 ? 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/40' : 
+                  'bg-red-500/20 text-red-400 ring-1 ring-red-500/40'
+                }`}
+                data-testid="match-score"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                </svg>
+                {matchScore}% Match
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowMatchDetails(!showMatchDetails); }}
+                  className="ml-1 underline text-[10px] opacity-80 hover:opacity-100"
+                  data-testid="view-why-btn"
+                >
+                  Why?
+                </button>
+              </div>
+
+              {/* Match Details Tooltip */}
+              {showMatchDetails && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-[#0A0F1C] border border-white/15 rounded-xl p-4 shadow-2xl z-50" data-testid="match-details-tooltip">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-bold text-white">Match Breakdown</h4>
+                    <button onClick={() => setShowMatchDetails(false)} className="text-[#8B95A5] hover:text-white">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  {matchResult.matched.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-[10px] uppercase tracking-wider text-[#36B37E] font-semibold mb-1.5">Matched</p>
+                      <div className="space-y-1">
+                        {matchResult.matched.map((m, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm text-white/90">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#36B37E" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            {m}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {matchResult.missing.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-red-400 font-semibold mb-1.5">Missing</p>
+                      <div className="space-y-1">
+                        {matchResult.missing.map((m, i) => (
+                          <div key={i} className="flex items-start gap-2 text-sm text-white/70">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" className="flex-shrink-0 mt-0.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            {m}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {matchResult.matched.length === 0 && matchResult.missing.length === 0 && (
+                    <p className="text-sm text-[#8B95A5]">No match data available</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <div className="flex items-center gap-1 text-[#36B37E] text-sm font-medium" data-testid="candidate-distance">
-            <span>📍</span>
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
             <span>{formatDistance(candidate.distance)}</span>
           </div>
         </div>
@@ -712,7 +770,7 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
           )}
           {candidate.lang_code && (
             <span className="bg-[#8B95A5]/10 text-[#8B95A5] text-xs px-2 py-1 rounded-full">
-              🗣 {getLanguageLabel(candidate.lang_code)}
+              {getLanguageLabel(candidate.lang_code)}
             </span>
           )}
           {/* Relocation Badge */}
@@ -722,7 +780,7 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
                 ? 'bg-[#36B37E]/20 text-[#36B37E]' 
                 : 'bg-[#8B95A5]/10 text-[#8B95A5]'
             }`} data-testid="relocation-badge">
-              {candidate.will_relocate ? '✓ Will Relocate' : '✗ Won\'t Relocate'}
+              {candidate.will_relocate ? 'Will Relocate' : 'Won\'t Relocate'}
             </span>
           )}
         </div>
@@ -896,9 +954,15 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-[#8B95A5] text-xs mb-1">Contact Number</p>
-            <p className={`font-mono text-lg ${isUnlocked ? 'text-[#36B37E]' : 'text-white/60'}`} data-testid="candidate-phone">
-              {isUnlocked ? revealedPhone : maskPhone(candidate.phone)}
-            </p>
+            {isUnlocked ? (
+              <p className="font-mono text-lg text-[#36B37E]" data-testid="candidate-phone">
+                {revealedPhone}
+              </p>
+            ) : (
+              <p className="font-mono text-lg text-white/40 select-none blur-[5px]" data-testid="candidate-phone-blurred">
+                {candidate.phone || '+91 98765 43210'}
+              </p>
+            )}
             {!isUnlocked && (
               <p className="text-xs text-[#8B95A5] mt-1">Unlock to reveal full number</p>
             )}
@@ -908,7 +972,7 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
             <button
               onClick={onUnlock}
               disabled={unlocking}
-              className="bg-[#0052CC] hover:bg-[#003d99] disabled:bg-gray-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95"
+              className="bg-gradient-to-r from-[#D4A017] to-[#F5C518] hover:from-[#C49515] hover:to-[#E5B508] disabled:from-gray-600 disabled:to-gray-600 text-[#1A1A1A] font-bold px-5 py-3 rounded-xl flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-[#D4A017]/20"
               data-testid="unlock-btn"
             >
               {unlocking ? (
@@ -920,11 +984,11 @@ function CandidateCard({ candidate, isUnlocked, isNew, isProcessed, matchScore, 
                 </span>
               ) : (
                 <>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  Unlock (1 Credit)
+                  <span className="whitespace-nowrap">&#8377;50 to Unlock</span>
                 </>
               )}
             </button>

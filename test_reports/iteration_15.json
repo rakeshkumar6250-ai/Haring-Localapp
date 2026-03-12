@@ -1,0 +1,162 @@
+{
+  "summary": "Completed comprehensive testing of GetLocal V2 Phase 8 - Employer Unlock Experience. All 17 backend pytest tests passed. All frontend UI tests passed. Payment system works in MOCK MODE (placeholder Razorpay keys) - credits are added directly without real checkout.",
+
+  "status_report_table": {
+    "Backend API Tests (17/17 passed)": {
+      "Wallet API - GET /nextapi/wallet": {
+        "Default employer returns balance": "PASS - balance=84, unlockedCandidates array present",
+        "New employer returns balance=0": "PASS",
+        "POST wallet adds credits": "PASS"
+      },
+      "Create Order - POST /nextapi/payments/create-order": {
+        "10 credits = 50000 paise (₹500)": "PASS",
+        "25 credits = 100000 paise (₹1000)": "PASS",
+        "Invalid credits (7) returns 400": "PASS",
+        "Missing employer_id returns 400": "PASS",
+        "Returns mock=true with placeholder keys": "PASS"
+      },
+      "Verify Payment - POST /nextapi/payments/verify": {
+        "Mock payment adds credits": "PASS",
+        "Balance accumulates correctly": "PASS",
+        "Invalid credits returns 400": "PASS"
+      },
+      "Unlock - POST /nextapi/unlock": {
+        "Returns 402 when credits=0": "PASS",
+        "Deducts exactly 1 credit": "PASS",
+        "Returns phone number on success": "PASS",
+        "Already unlocked - no deduction": "PASS",
+        "Missing candidateId returns 400": "PASS",
+        "Invalid candidateId returns 404": "PASS"
+      },
+      "E2E Flow": {
+        "Full payment and unlock flow": "PASS"
+      },
+      "Match Score Data": {
+        "Jobs have matching fields (min_education, english_level)": "PASS",
+        "Candidates have matching fields (education_level, english_level)": "PASS"
+      }
+    },
+    "Frontend UI Tests": {
+      "Credit Balance Display": {
+        "Gold-styled credit badge in header": "PASS - '60 Credits' displayed with gold gradient",
+        "Balance updates after purchase (59→84)": "PASS",
+        "Balance updates after unlock (60→59)": "PASS"
+      },
+      "Buy Credits Modal": {
+        "Modal opens from credit button click": "PASS",
+        "2 credit packs displayed (10, 25)": "PASS - 10 for ₹500, 25 for ₹1000 (Best Value)",
+        "Pack selection works": "PASS",
+        "Mock payment adds credits directly": "PASS",
+        "Modal closes after purchase": "PASS"
+      },
+      "Blurred Contact Info": {
+        "Phone numbers blurred (CSS blur-[5px])": "PASS - 51 locked profiles with blurred phones",
+        "Blur applied with data-testid='candidate-phone-blurred'": "PASS"
+      },
+      "Gold Unlock Button": {
+        "Gold gradient styling (from-[#D4A017] to-[#F5C518])": "PASS",
+        "Text '₹50 to Unlock' displayed": "PASS",
+        "51 unlock buttons visible for locked candidates": "PASS"
+      },
+      "Match Score Badge": {
+        "Match score appears when job selected": "PASS - '100% Match' badge visible",
+        "Green styling for high scores (>=85%)": "PASS",
+        "'Why?' button visible in badge": "PASS",
+        "Match details tooltip shows matched/missing fields": "PASS - Education, English, Experience, Role Category"
+      },
+      "Unlock Flow": {
+        "Unlock button works - deducts 1 credit": "PASS - 60→59",
+        "Phone revealed after unlock (+91 99887 98420)": "PASS",
+        "Call button visible after unlock": "PASS",
+        "WhatsApp button visible after unlock": "PASS",
+        "Report No-Show button visible after unlock": "PASS"
+      },
+      "Locked Profile Security": {
+        "Phone masked for locked profiles": "PASS",
+        "Call/WhatsApp buttons HIDDEN when locked": "PASS"
+      }
+    }
+  },
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "GET /nextapi/wallet?employer_id=default-employer - Returns balance=84, unlockedCandidates",
+    "GET /nextapi/wallet?employer_id=new - Returns balance=0",
+    "POST /nextapi/wallet - Adds credits directly",
+    "POST /nextapi/payments/create-order - 10 credits = 50000 paise with mock=true",
+    "POST /nextapi/payments/create-order - 25 credits = 100000 paise",
+    "POST /nextapi/payments/create-order - Invalid credits (7) returns 400",
+    "POST /nextapi/payments/create-order - Missing employer_id returns 400",
+    "POST /nextapi/payments/verify - Mock=true adds credits directly",
+    "POST /nextapi/payments/verify - Credits accumulate correctly",
+    "POST /nextapi/unlock - Returns 402 (insufficient_credits) when balance=0",
+    "POST /nextapi/unlock - Deducts exactly 1 credit",
+    "POST /nextapi/unlock - Returns phone number on success",
+    "POST /nextapi/unlock - Already unlocked returns success without deduction",
+    "POST /nextapi/unlock - Missing candidateId returns 400",
+    "POST /nextapi/unlock - Invalid candidateId returns 404",
+    "E2E: Create order -> Verify -> Unlock -> Check balance flow",
+    "Jobs have minimum_education, english_level for matching",
+    "Candidates have education_level, english_level for matching",
+    "UI: Gold credit badge in header displays current balance",
+    "UI: Credit balance button opens Buy Credits modal",
+    "UI: Buy Credits modal shows 2 packs (10 for ₹500, 25 for ₹1000 Best Value)",
+    "UI: Selecting pack and Confirm Buy adds credits in mock mode",
+    "UI: Modal closes after successful purchase",
+    "UI: Credit balance updates in header after purchase (59→84)",
+    "UI: Phone numbers blurred (CSS blur) for locked candidates",
+    "UI: Gold '₹50 to Unlock' button with gradient styling",
+    "UI: Match score badge appears when job selected ('100% Match')",
+    "UI: 'Why?' button opens tooltip with matched/missing fields",
+    "UI: Match details tooltip shows green checkmarks for matched fields",
+    "UI: Unlock deducts 1 credit (60→59)",
+    "UI: Phone revealed after unlock (+91 99887 98420)",
+    "UI: Call and WhatsApp buttons visible after unlock",
+    "UI: Report No-Show button visible after unlock"
+  ],
+
+  "test_report_links": [
+    "/app/getlocal/tests/test_phase8_unlock_experience.py",
+    "/app/test_reports/pytest/pytest_phase8_unlock.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/getlocal/tests/test_phase8_unlock_experience.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (17/17 pytest tests passed)",
+    "frontend": "100% (All UI tests passed)"
+  },
+
+  "mocked_integrations": {
+    "Razorpay Payment Gateway": "MOCKED - Using placeholder keys (rzp_test_PLACEHOLDER). In mock mode, create-order returns mock order ID and verify with mock=true adds credits directly without real payment checkout."
+  },
+
+  "seed_data_creation": "No new seed data created. Used existing 55 candidates and 25 jobs. Default employer 'default-employer' wallet tested with 84 credits (started with 60, unlocked 1 for 59, purchased 25 for 84).",
+
+  "test_credentials": {
+    "employer_id": "default-employer",
+    "balance": 84,
+    "unlocked_count": 5
+  },
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Phase 8 Employer Unlock Experience fully tested. Backend test file: /app/getlocal/tests/test_phase8_unlock_experience.py. All payment APIs working in MOCK mode (placeholder Razorpay keys). Key verified behaviors:\n1. Wallet returns balance and unlockedCandidates array\n2. Create order validates credit packs (10/25 only in modal, 50 also available in API)\n3. Verify with mock=true adds credits directly\n4. Unlock costs exactly 1 credit and returns phone on success\n5. Already unlocked candidates don't deduct again\n6. Phone numbers have CSS blur for locked profiles\n7. Gold unlock button uses gradient from-[#D4A017] to-[#F5C518]\n8. Match score badge appears when job is selected with 'Why?' button\n9. Match details tooltip shows matched[] (green checkmarks) and missing[] (red X)"
+}
