@@ -48,6 +48,17 @@ Credits system (default 0), 3 packs (10/₹500, 25/₹1000, 50/₹1750), 1 credi
 - **Mock Razorpay Flow**: create-order returns mock=true -> verify with mock=true adds credits directly. Full checkout UI ready for real keys.
 - **Client-side Match Score**: `/src/lib/matchScore.js` mirrors server-side `matching.js` logic for frontend rendering.
 
+### Phase 12: Employer Authentication & Route Protection (Feb 2026)
+- **Signup Flow**: Phone + company name + password (min 6 chars) → OTP step → verify → JWT issued. Account created in DB with wallet (0 credits).
+- **Mock OTP**: Always accepts `123456`. Hint shown on OTP screen. Ready to swap with real SMS provider.
+- **Login Flow**: Phone + password → JWT returned. Token stored in localStorage as `auth_token`.
+- **JWT Session**: `jsonwebtoken` with 7-day expiry. Payload: `{employer_id, phone, company_name}`. Secret from `JWT_SECRET` env var.
+- **Protected Routes (Frontend)**: `/hire` and `/post-job` redirect to `/login` via `AuthProvider` context. Guest routes (`/login`, `/signup`) redirect to `/hire` if already logged in.
+- **Protected Routes (Backend)**: `/nextapi/wallet`, `/nextapi/unlock`, `/nextapi/payments/create-order`, `/nextapi/payments/verify` all require `Authorization: Bearer <token>`. Return 401 without valid JWT.
+- **Credit Binding**: No `default-employer` fallback. `employer_id` extracted from JWT on every protected API call. Wallet (credits + unlocked_candidates) strictly tied to authenticated user record.
+- **Logout**: Clears `auth_token` + `employer_id` from localStorage, redirects to `/login`.
+- **Key Files**: `/src/lib/auth.js` (JWT utils), `/src/components/AuthProvider.js` (context), `/src/app/login/page.js`, `/src/app/signup/page.js`, all 4 auth API routes under `/nextapi/auth/`.
+
 ## API Routes
 | Route | Method | Purpose |
 |-------|--------|---------|
@@ -75,7 +86,7 @@ Credits system (default 0), 3 packs (10/₹500, 25/₹1000, 50/₹1750), 1 credi
 
 ## Environment Variables
 ```
-MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
+MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_SECRET
 ```
 
 ## Prioritized Backlog
@@ -84,9 +95,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET
 - [x] Razorpay payment gateway
 - [x] Automated matching engine
 - [x] Employer Unlock Experience frontend
+- [x] Employer Authentication (JWT + phone/password)
+- [x] SMS OTP Verification (Mock: 123456)
+- [x] Protected Routes (/hire, /post-job, payment/wallet/unlock endpoints)
+- [x] Credit Binding (wallet tied to authenticated employer)
 - [ ] Activate Razorpay with real keys
 - [ ] Real WhatsApp delivery (Interakt/Twilio/Cloud API)
-- [ ] SMS OTP verification
-- [ ] Employer authentication
+- [ ] Real SMS OTP (replace mock 123456 with Twilio/MSG91)
 - [ ] Real commute calculation (Maps API)
 - [ ] Video interviews, AI job matching, Analytics dashboard
