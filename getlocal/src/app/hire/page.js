@@ -4,9 +4,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { calculateDistance, maskPhone, formatDistance } from '@/lib/utils';
 import { calculateDetailedMatchScore } from '@/lib/matchScore';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function HirePage() {
   const router = useRouter();
+  const { user, token, loading: authLoading, logout } = useAuth();
   const [candidates, setCandidates] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [activeJob, setActiveJob] = useState(undefined);
@@ -33,13 +35,10 @@ export default function HirePage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [pendingUnlockId, setPendingUnlockId] = useState(null);
 
-  // Employer ID from localStorage
-  const [employerId, setEmployerId] = useState('default-employer');
+  // Employer ID from auth
+  const employerId = user?.id || null;
 
-  useEffect(() => {
-    const eid = localStorage.getItem('employer_id') || 'default-employer';
-    setEmployerId(eid);
-  }, []);
+  // Auth guard - redirect handled by AuthProvider, but show loading
 
   // Get user location
   useEffect(() => {
@@ -95,15 +94,18 @@ export default function HirePage() {
   }, [eduFilter, engFilter, expFilter, verifiedOnly]);
 
   const fetchCredits = useCallback(async () => {
+    if (!token || !employerId) return;
     try {
-      const res = await fetch(`/nextapi/wallet?employer_id=${employerId}`);
+      const res = await fetch(`/nextapi/wallet?employer_id=${employerId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setCredits(data.balance ?? 0);
       setUnlockedIds(data.unlockedCandidates || []);
     } catch (err) {
       console.error('Failed to fetch wallet:', err);
     }
-  }, [employerId]);
+  }, [employerId, token]);
 
   useEffect(() => {
     fetchJobs();
@@ -139,7 +141,7 @@ export default function HirePage() {
     try {
       const res = await fetch('/nextapi/unlock', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ candidateId, employer_id: employerId }),
       });
 
@@ -181,7 +183,7 @@ export default function HirePage() {
     try {
       const orderRes = await fetch('/nextapi/payments/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ credits: selectedPack, employer_id: employerId }),
       });
       const orderData = await orderRes.json();
@@ -191,7 +193,7 @@ export default function HirePage() {
       if (orderData.mock) {
         const verifyRes = await fetch('/nextapi/payments/verify', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ employer_id: employerId, credits: selectedPack, mock: true }),
         });
         const verifyData = await verifyRes.json();
@@ -220,7 +222,7 @@ export default function HirePage() {
         handler: async function (response) {
           const verifyRes = await fetch('/nextapi/payments/verify', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -330,6 +332,14 @@ export default function HirePage() {
     .filter(c => !roleFilter || c.role_category?.toLowerCase().includes(roleFilter.toLowerCase()))
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-[#0052CC] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
@@ -337,11 +347,9 @@ export default function HirePage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold">Find Candidates</h1>
-            {lastRefresh && (
-              <p className="text-xs text-[#8B95A5]">
-                Updated {lastRefresh.toLocaleTimeString()}
-              </p>
-            )}
+            <p className="text-xs text-[#8B95A5]">
+              {user.company_name}{lastRefresh ? ` · Updated ${lastRefresh.toLocaleTimeString()}` : ''}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -359,6 +367,9 @@ export default function HirePage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
               {credits} Credits
               {credits < 3 && <span className="text-[10px] bg-[#D4A017] text-[#1A1A1A] px-1.5 py-0.5 rounded-full font-bold ml-1">Buy More</span>}
+            </button>
+            <button onClick={logout} className="text-[#8B95A5] hover:text-red-400 p-1.5 rounded-lg hover:bg-white/5 transition-all" data-testid="logout-btn" title="Logout">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
           </div>
         </div>

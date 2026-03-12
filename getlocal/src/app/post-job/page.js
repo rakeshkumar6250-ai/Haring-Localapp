@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/AuthProvider';
 
 const JOB_CATEGORIES = [
   'Driver', 'Cook', 'Delivery', 'Security Guard', 'House Helper',
@@ -27,13 +28,14 @@ const CONTACT_PREFS = ['WhatsApp', 'Phone Call', 'Walk-in Only', 'Any'];
 
 export default function PostJobPage() {
   const router = useRouter();
+  const { user, token, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [userLocation, setUserLocation] = useState(null);
 
-  // KYC state
+  // KYC state - use auth employer ID
   const [employerId, setEmployerId] = useState(null);
   const [employer, setEmployer] = useState(null);
   const [kycLoading, setKycLoading] = useState(true);
@@ -66,12 +68,10 @@ export default function PostJobPage() {
   });
 
   useEffect(() => {
-    // Get or create employer ID from localStorage
-    let eid = localStorage.getItem('employer_id');
-    if (!eid) {
-      eid = crypto.randomUUID();
-      localStorage.setItem('employer_id', eid);
-    }
+    if (authLoading) return;
+    if (!user) return; // AuthProvider will redirect to /login
+    
+    const eid = user.id;
     setEmployerId(eid);
     checkEmployerKyc(eid);
 
@@ -83,7 +83,7 @@ export default function PostJobPage() {
     } else {
       setUserLocation({ lat: 28.6139, lng: 77.2090 });
     }
-  }, []);
+  }, [authLoading, user]);
 
   const checkEmployerKyc = async (eid) => {
     try {
@@ -199,6 +199,14 @@ export default function PostJobPage() {
 
   const handleChange = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
   const togglePerk = (id) => setFormData(prev => ({ ...prev, perks: prev.perks.includes(id) ? prev.perks.filter(p => p !== id) : [...prev.perks, id] }));
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0A0F1C]">
+        <div className="w-10 h-10 border-4 border-[#0052CC] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (kycLoading) {
     return (

@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getWallets } from '@/lib/mongodb';
+import { getAuthFromRequest } from '@/lib/auth';
 
 export async function GET(request) {
+  const auth = getAuthFromRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const employerId = searchParams.get('employer_id') || 'default-employer';
+    const employerId = auth.employer_id;
 
     const wallets = await getWallets();
     let wallet = await wallets.findOne({ user_id: employerId });
@@ -31,10 +36,15 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  const auth = getAuthFromRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { amount, employer_id } = body;
-    const userId = employer_id || 'default-employer';
+    const { amount } = body;
+    const userId = auth.employer_id;
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });

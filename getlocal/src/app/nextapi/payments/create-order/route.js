@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { v4 as uuidv4 } from 'uuid';
+import { getAuthFromRequest } from '@/lib/auth';
 
 const CREDIT_PACKS = {
   10: 50000,   // 10 credits = ₹500 (in paise)
@@ -9,18 +10,21 @@ const CREDIT_PACKS = {
 };
 
 export async function POST(request) {
+  const auth = getAuthFromRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { credits, employer_id } = body;
+    const { credits } = body;
+    const employer_id = auth.employer_id;
 
     if (!credits || !CREDIT_PACKS[credits]) {
       return NextResponse.json(
         { error: 'Invalid credit pack. Choose 10, 25, or 50.' },
         { status: 400 }
       );
-    }
-    if (!employer_id) {
-      return NextResponse.json({ error: 'employer_id is required' }, { status: 400 });
     }
 
     const keyId = process.env.RAZORPAY_KEY_ID;

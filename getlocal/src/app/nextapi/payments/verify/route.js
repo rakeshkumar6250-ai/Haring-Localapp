@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { getWallets } from '@/lib/mongodb';
+import { getAuthFromRequest } from '@/lib/auth';
 
 const CREDIT_PACKS = {
   10: 50000,
@@ -33,12 +33,18 @@ async function addCredits(employerId, credits) {
 }
 
 export async function POST(request) {
+  const auth = getAuthFromRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, employer_id, credits, mock } = body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, credits, mock } = body;
+    const employer_id = auth.employer_id;
 
-    if (!employer_id || !credits) {
-      return NextResponse.json({ error: 'employer_id and credits required' }, { status: 400 });
+    if (!credits) {
+      return NextResponse.json({ error: 'credits required' }, { status: 400 });
     }
 
     // Mock mode: just add credits directly (when Razorpay keys aren't configured)

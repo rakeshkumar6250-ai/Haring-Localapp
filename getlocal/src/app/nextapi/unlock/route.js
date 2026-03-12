@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getWallets, getCandidates } from '@/lib/mongodb';
+import { getAuthFromRequest } from '@/lib/auth';
 
 const UNLOCK_COST = 1;
 
 export async function POST(request) {
+  const auth = getAuthFromRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { candidateId, employer_id } = body;
-    const userId = employer_id || 'default-employer';
+    const { candidateId } = body;
+    const userId = auth.employer_id;
 
     if (!candidateId) {
       return NextResponse.json({ error: 'Candidate ID is required' }, { status: 400 });
