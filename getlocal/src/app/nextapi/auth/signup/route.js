@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getEmployers } from '@/lib/mongodb';
-import { hashPassword, signToken } from '@/lib/auth';
+import { hashPassword } from '@/lib/auth';
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock OTP store (in-memory, resets on restart)

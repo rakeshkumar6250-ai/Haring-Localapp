@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getEmployers } from '@/lib/mongodb';
 import { writeFile, mkdir, access, constants } from 'fs/promises';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
 const KYC_DIR = path.join(process.cwd(), 'public', 'kyc-docs');
 

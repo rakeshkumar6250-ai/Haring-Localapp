@@ -28,7 +28,7 @@ const CONTACT_PREFS = ['WhatsApp', 'Phone Call', 'Walk-in Only', 'Any'];
 
 export default function PostJobPage() {
   const router = useRouter();
-  const { user, token, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);

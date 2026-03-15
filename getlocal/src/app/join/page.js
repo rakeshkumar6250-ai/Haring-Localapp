@@ -176,7 +176,7 @@ export default function JoinPage() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [location, setLocation] = useState(null);
-  const [candidateId, setCandidateId] = useState(null);
+  const [, setCandidateId] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [audioLevels, setAudioLevels] = useState([]);
   
@@ -200,7 +200,7 @@ export default function JoinPage() {
   const [englishLevel, setEnglishLevel] = useState('');
   const [experienceType, setExperienceType] = useState('Fresher');
   const [idFile, setIdFile] = useState(null);
-  const [idUploading, setIdUploading] = useState(false);
+  const [, setIdUploading] = useState(false);
   
   // Audio recording refs
   const mediaRecorderRef = useRef(null);
@@ -255,7 +255,7 @@ export default function JoinPage() {
         animationFrameRef.current = requestAnimationFrame(updateLevels);
       };
       updateLevels();
-    } catch (e) { console.log('Audio visualizer not supported'); }
+    } catch { console.log('Audio visualizer not supported'); }
   }, []);
 
   const stopAudioVisualizer = useCallback(() => {
@@ -303,7 +303,7 @@ export default function JoinPage() {
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    } catch (err) {
+    } catch {
       setErrorMsg('Please allow microphone access');
       setPhase('error');
     }
@@ -790,7 +790,7 @@ export default function JoinPage() {
         {phase === 'selectLanguage' && (
           <>
             <h1 className="text-2xl font-bold text-center mb-2">Select Your Language</h1>
-            <p className="text-[#8B95A5] text-center mb-8">Choose the language you're comfortable speaking</p>
+            <p className="text-[#8B95A5] text-center mb-8">Choose the language you&apos;re comfortable speaking</p>
             {isSpeaking && <SpeakingIndicator />}
             <div className="grid grid-cols-1 gap-4 w-full max-w-xs">
               {Object.entries(INTERVIEW_SCRIPTS).map(([code, script]) => (

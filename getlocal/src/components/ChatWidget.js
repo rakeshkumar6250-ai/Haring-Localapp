@@ -183,7 +183,7 @@ export default function ChatWidget() {
             </div>
             <h3 className="text-white font-bold text-lg mb-2">Request Received!</h3>
             <p className="text-[#8B95A5] text-sm mb-4">
-              We'll get back to you shortly.
+              We&apos;ll get back to you shortly.
             </p>
             <button
               onClick={resetChat}

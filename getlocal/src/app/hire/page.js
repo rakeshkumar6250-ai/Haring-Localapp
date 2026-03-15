@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { calculateDistance, maskPhone, formatDistance } from '@/lib/utils';
+import { calculateDistance, formatDistance } from '@/lib/utils';
 import { calculateDetailedMatchScore } from '@/lib/matchScore';
 import { useAuth } from '@/components/AuthProvider';
 
