@@ -824,8 +824,8 @@ export default function JoinPage() {
             {isSpeaking && <SpeakingIndicator />}
 
             {!isSpeaking && (
-              <p className="text-[#8B95A5] text-center mb-6">
-                {isRecording ? 'Tap when done' : 'Tap to record'}
+              <p className="text-center mb-8 text-lg font-medium transition-colors duration-200" style={{ color: isRecording ? '#ef4444' : '#8B95A5' }}>
+                {isRecording ? 'Release to Send' : 'Press and Hold to Speak'}
               </p>
             )}
 
@@ -842,7 +842,9 @@ export default function JoinPage() {
             )}
 
             <MicButton 
-              onClick={toggleRecording} 
+              onPointerDown={startRecording}
+              onPointerUp={stopRecording}
+              onPointerLeave={() => { if (isRecording) stopRecording() }}
               isRecording={isRecording}
               isSpeaking={isSpeaking}
               disabled={isSpeaking}
@@ -1090,19 +1092,39 @@ function SpeakingIndicator() {
   );
 }
 
-function MicButton({ onClick, isRecording, isSpeaking, disabled }) {
+function MicButton({ onClick, onPointerDown, onPointerUp, onPointerLeave, isRecording, isSpeaking, disabled }) {
   return (
-    <div className={`relative ${isRecording ? 'recording' : ''}`}>
-      <div className={`mic-pulse-ring absolute inset-0 rounded-full scale-150 ${
-        isRecording ? 'bg-red-500/30' : isSpeaking ? 'bg-[#36B37E]/30' : 'bg-[#0052CC]/30'
+    <div className={`relative flex justify-center items-center ${isRecording ? 'recording' : ''}`}>
+      <div className={`mic-pulse-ring absolute inset-0 rounded-full scale-150 transition-all duration-300 ${
+        isRecording ? 'bg-red-500/40' : isSpeaking ? 'bg-[#36B37E]/30' : 'bg-[#0052CC]/30'
       }`} />
       <button
-        onClick={onClick}
+        // Pointer events replicate the "Press and Hold" touch screen mechanics
+        onPointerDown={(e) => {
+          if (disabled) return;
+          e.preventDefault(); 
+          if (onPointerDown) onPointerDown(e);
+          else if (onClick) onClick(e); // Fallback for the initial "Tap to start" screen
+        }}
+        onPointerUp={(e) => {
+          if (disabled) return;
+          e.preventDefault();
+          if (onPointerUp) onPointerUp(e);
+        }}
+        onPointerLeave={(e) => {
+          if (disabled) return;
+          e.preventDefault();
+          if (onPointerLeave) onPointerLeave(e);
+        }}
         disabled={disabled}
-        className={`mic-pulse relative w-32 h-32 rounded-full flex items-center justify-center transition-all disabled:opacity-50 active:scale-95 ${
-          isRecording ? 'bg-red-500 shadow-[0_0_60px_rgba(239,68,68,0.5)]' 
-          : isSpeaking ? 'bg-[#36B37E] shadow-[0_0_60px_rgba(54,179,126,0.4)]'
-          : 'bg-[#0052CC] shadow-[0_0_60px_rgba(0,82,204,0.4)]'
+        // CRITICAL: This stops the phone from scrolling/zooming while they hold the button
+        style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+        className={`mic-pulse relative flex items-center justify-center rounded-full transition-all duration-200 disabled:opacity-50 ${
+          isRecording 
+            ? 'w-36 h-36 bg-red-500 scale-110 shadow-[0_0_60px_rgba(239,68,68,0.8)] animate-pulse' 
+            : isSpeaking 
+              ? 'w-32 h-32 bg-[#36B37E] shadow-[0_0_60px_rgba(54,179,126,0.4)]'
+              : 'w-32 h-32 bg-[#0052CC] shadow-[0_0_60px_rgba(0,82,204,0.4)] active:scale-95'
         }`}
         data-testid="mic-button"
       >
@@ -1111,12 +1133,8 @@ function MicButton({ onClick, isRecording, isSpeaking, disabled }) {
             <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" />
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
           </svg>
-        ) : isRecording ? (
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
-            <rect x="6" y="6" width="12" height="12" rx="2" />
-          </svg>
         ) : (
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+          <svg width={isRecording ? "56" : "48"} height={isRecording ? "56" : "48"} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="transition-all duration-200">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
             <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
             <line x1="12" y1="19" x2="12" y2="23" />
