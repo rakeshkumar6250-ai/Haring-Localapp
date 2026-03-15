@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCandidates } from '@/lib/mongodb';
 import { createReadStream } from 'fs';
-import { access, constants } from 'fs/promises';
+import { writeFile } from 'fs/promises';
 import path from 'path';
 import OpenAI from 'openai';
 
@@ -39,8 +39,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No audio file for this candidate' }, { status: 400 });
     }
 
-    const audioPath = path.join(process.cwd(), 'public', candidate.audio_interview_url);
-    console.log('[PROCESS] Audio path:', audioPath);
+    const audioUrl = candidate.audio_interview_url;
+    console.log('[PROCESS] Audio URL:', audioUrl);
 
     // Try real OpenAI, fall back to mock
     let result;
@@ -48,15 +48,22 @@ export async function POST(request) {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
-      await access(audioPath, constants.R_OK);
+      // 1. Download the file from Vercel Blob into the temporary /tmp folder
+      console.log(`[PROCESS] Downloading audio from Blob to /tmp...`);
+      const fetchRes = await fetch(audioUrl);
+      if (!fetchRes.ok) throw new Error(`Failed to fetch audio from Blob: ${fetchRes.statusText}`);
 
+      const buffer = Buffer.from(await fetchRes.arrayBuffer());
+      const tmpPath = path.join('/tmp', `process-${candidateId}.webm`);
+      await writeFile(tmpPath, buffer);
+
+      // 2. Pass the /tmp file to OpenAI
       const openai = new OpenAI({ apiKey });
       const langCode = candidate.lang_code || 'en';
 
-      // Whisper transcription
       console.log(`[PROCESS] Whisper transcription (lang=${langCode})...`);
       const transcription = await openai.audio.transcriptions.create({
-        file: createReadStream(audioPath),
+        file: createReadStream(tmpPath),
         model: 'whisper-1',
         language: langCode,
         response_format: 'text',
@@ -68,7 +75,7 @@ export async function POST(request) {
 
       console.log(`[PROCESS] Transcript: ${transcription.substring(0, 200)}...`);
 
-      // GPT-4o-mini extraction
+      // 3. GPT-4o-mini extraction
       console.log('[PROCESS] GPT-4o-mini extraction...');
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
