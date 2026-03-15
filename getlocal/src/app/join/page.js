@@ -327,11 +327,6 @@ export default function JoinPage() {
     }
   };
 
-  const toggleRecording = () => {
-    if (isRecording) stopRecording();
-    else startRecording();
-  };
-
   // Handle manual form submission
   const handleManualSubmit = () => {
     if (!manualForm.name.trim()) {
