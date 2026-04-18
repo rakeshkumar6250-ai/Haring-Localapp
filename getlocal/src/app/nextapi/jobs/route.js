@@ -11,7 +11,11 @@ const JOB_CATEGORIES = [
 export async function GET() {
   try {
     const jobs = await getJobs();
-    const allJobs = await jobs.find({}).sort({ created_at: -1 }).toArray();
+    const allJobs = await jobs
+      .find({ status: { $in: ['Open', 'active'] } })
+      .sort({ created_at: -1 })
+      .limit(20)
+      .toArray();
 
     // Enrich jobs with employer verification status
     const employers = await getEmployers();
@@ -41,37 +45,47 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { 
+    const {
+      // New simplified fields
+      role, salary, jobType,
+      // Existing expanded fields (backward compat)
       title, category, required_experience, location_radius, location,
-      salary, perks, training_provided, job_expectations, employer_location,
-      // New fields
+      perks, training_provided, job_expectations, employer_location,
       employer_id, company_name, job_type, work_location_type, pay_type,
       requires_joining_fee, minimum_education, english_level,
       experience_required, is_walk_in, contact_preference, job_description
     } = body;
 
-    if (!title || !category) {
-      return NextResponse.json({ error: 'Title and category are required' }, { status: 400 });
+    // Use `role` as primary, fall back to `title` for backward compat
+    const jobRole = role || title;
+    const jobCategory = category || role || 'General';
+    const jobSalary = salary;
+    const jobLocation = location || { lat: 28.6139, lng: 77.2090 };
+
+    if (!jobRole || !jobLocation || !jobSalary) {
+      return NextResponse.json(
+        { error: 'role, location, and salary are required' },
+        { status: 400 }
+      );
     }
 
     const jobs = await getJobs();
-    
+
     const job = {
       _id: uuidv4(),
-      title: title.trim(),
-      category,
+      title: typeof jobRole === 'string' ? jobRole.trim() : jobRole,
+      category: jobCategory,
       company_name: company_name || '',
       employer_id: employer_id || null,
       required_experience: parseInt(required_experience) || 0,
       location_radius: parseInt(location_radius) || 10,
-      location: location || { lat: 28.6139, lng: 77.2090 },
-      salary: salary || null,
+      location: jobLocation,
+      salary: jobSalary,
       perks: perks || [],
       training_provided: training_provided || false,
       job_expectations: job_expectations || '',
       employer_location: employer_location || '',
-      // Expanded schema
-      job_type: job_type || 'Full Time',
+      job_type: jobType || job_type || 'Full Time',
       work_location_type: work_location_type || 'Office',
       pay_type: pay_type || 'Fixed',
       requires_joining_fee: requires_joining_fee || false,
@@ -81,8 +95,9 @@ export async function POST(request) {
       is_walk_in: is_walk_in || false,
       contact_preference: contact_preference || 'WhatsApp',
       job_description: job_description || '',
-      status: 'active',
+      status: 'Open',
       is_active: true,
+      createdAt: new Date(),
       created_at: new Date(),
       updated_at: new Date()
     };
