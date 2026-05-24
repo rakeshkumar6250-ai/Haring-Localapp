@@ -1,58 +1,70 @@
 import Link from 'next/link';
 
 export default function LandingPage() {
+  const categories = [
+    { name: 'Drivers', icon: '🚗' },
+    { name: 'Cooks', icon: '🧑‍🍳' },
+    { name: 'Helpers', icon: '🧹' },
+    { name: 'Teachers', icon: '👩‍🏫' },
+    { name: 'Security', icon: '🔒' },
+    { name: 'More', icon: '🔧' },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0B0F19] flex flex-col items-center justify-center p-6">
-      
-      {/* Brand Header */}
-      <div className="mb-10 text-center animate-fade-in-down">
-        <div className="w-20 h-20 bg-[#0052CC] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-[0_0_40px_rgba(0,82,204,0.3)]">
-          <span className="text-white font-bold text-4xl">G</span>
+    <div className="min-h-screen bg-[#1E1E1E] flex flex-col pb-20">
+      <div className="bg-[#1F8A61] rounded-b-[2rem] p-6 pt-12 text-white shadow-lg">
+        <div className="flex items-center gap-2 mb-6">
+          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center font-bold">K</div>
+          <span className="text-xl font-bold tracking-tight">Kaam.ai</span>
         </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">GetLocal</h1>
+        <h1 className="text-4xl font-bold leading-tight mb-2">Hire trusted workers near you</h1>
+        <p className="text-white/80 font-medium mb-6">AI-powered · WhatsApp-first · Hyderabad</p>
+        <div className="flex gap-3 mb-8">
+          <span className="bg-white/20 px-4 py-1.5 rounded-full text-sm font-semibold">English</span>
+          <span className="bg-white/10 px-4 py-1.5 rounded-full text-sm font-semibold">हिंदी</span>
+          <span className="bg-white/10 px-4 py-1.5 rounded-full text-sm font-semibold">తెలుగు</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Link href="/join" className="border border-white/30 bg-white/10 hover:bg-white/20 rounded-2xl p-5 flex flex-col items-center justify-center transition-all active:scale-95">
+            <h2 className="text-xl font-bold mb-1">నాకు పని కావాలి</h2>
+            <p className="text-sm font-medium text-white/80">I want work</p>
+          </Link>
+          <Link href="/hire" className="border border-white/30 bg-white/10 hover:bg-white/20 rounded-2xl p-5 flex flex-col items-center justify-center transition-all active:scale-95">
+            <h2 className="text-xl font-bold mb-1">నాకు స్టాఫ్ కావాలి</h2>
+            <p className="text-sm font-medium text-white/80">I want to hire</p>
+          </Link>
+        </div>
       </div>
-
-      {/* The Two Massive Doors */}
-      <div className="w-full max-w-md flex flex-col gap-6">
-
-        {/* DOOR 1: Candidates (Supply side goes top because we need them most) */}
-        <Link 
-          href="/join" 
-          className="relative w-full bg-[#151B2D] border-2 border-[#36B37E]/30 hover:border-[#36B37E] rounded-[2rem] p-8 flex flex-col items-center justify-center transition-all active:scale-95 shadow-lg"
-        >
-          <div className="w-24 h-24 bg-[#36B37E] rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(54,179,126,0.4)]">
-            {/* Briefcase / Tool Icon */}
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-            </svg>
+      <div className="p-6">
+        <div className="mb-8">
+          <h3 className="text-[#8B95A5] text-sm font-bold tracking-wider mb-4 uppercase">Browse by Category</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {categories.map((cat) => (
+              <button key={cat.name} className="bg-[#2A2A2A] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-[#333] transition-colors">
+                <span className="text-2xl">{cat.icon}</span>
+                <span className="text-white text-xs font-semibold">{cat.name}</span>
+              </button>
+            ))}
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2">I Want a Job</h2>
-          <p className="text-[#36B37E] font-semibold text-lg text-center">
-            मुझे काम चाहिए <br/> నాకు పని కావాలి
-          </p>
-        </Link>
-
-        {/* DOOR 2: Employers */}
-        <Link 
-          href="/login" 
-          className="relative w-full bg-[#151B2D] border-2 border-[#0052CC]/30 hover:border-[#0052CC] rounded-[2rem] p-8 flex flex-col items-center justify-center transition-all active:scale-95 shadow-lg"
-        >
-          <div className="w-24 h-24 bg-[#0052CC] rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(0,82,204,0.4)]">
-            {/* Hire / Person Icon */}
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
+        </div>
+        <div>
+          <h3 className="text-[#8B95A5] text-sm font-bold tracking-wider mb-4 uppercase">Recently Verified</h3>
+          <div className="bg-[#2A2A2A] border border-white/5 rounded-2xl p-4 flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-[#E6F4EA] text-[#1F8A61] rounded-full flex items-center justify-center font-bold text-lg">RK</div>
+              <div>
+                <h4 className="text-white font-bold text-lg leading-tight">Raju Kumar</h4>
+                <p className="text-[#8B95A5] text-sm mb-2">Driver · Hydershakote</p>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  <span className="bg-[#E6F4EA] text-[#1F8A61] px-2 py-1 rounded-md flex items-center gap-1">✓ Verified</span>
+                  <span className="text-[#FABB05] flex items-center gap-1">★ 4.8</span>
+                  <span className="text-[#8B95A5] bg-black/20 px-2 py-1 rounded-md">4 yrs exp</span>
+                </div>
+              </div>
+            </div>
+            <button className="bg-[#333] hover:bg-[#444] text-white border border-white/10 font-bold px-5 py-2 rounded-xl transition-colors">Hire</button>
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2">I Want to Hire</h2>
-          <p className="text-[#0052CC] font-semibold text-lg text-center">
-            मुझे स्टाफ चाहिए <br/> నాకు స్టాఫ్ కావాలి
-          </p>
-        </Link>
-
+        </div>
       </div>
     </div>
   );
