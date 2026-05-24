@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getJobs, getEmployers } from '@/lib/mongodb';
 import { v4 as uuidv4 } from 'uuid';
 import { onJobCreated } from '@/lib/matching';
+export const dynamic = 'force-dynamic';
 
 const JOB_CATEGORIES = [
   'Driver', 'Cook', 'Delivery', 'Security Guard', 'House Helper', 
