@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOutgoingLog } from '@/lib/mongodb';
+export const dynamic = 'force-dynamic';
 
 // GET: Fetch notification log with optional filters
 export async function GET(request) {
