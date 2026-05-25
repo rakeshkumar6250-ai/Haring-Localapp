@@ -5,7 +5,7 @@ const jobSchema = new mongoose.Schema({
   category: { type: String, required: true },
   location: { type: String, required: true },
   salary: { type: String, required: true },
-  status: { type: String, default: 'active' }, // active, matched, closed
+  status: { type: String, default: 'active' }, 
   createdAt: { type: Date, default: Date.now }
 });
 
