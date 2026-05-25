@@ -70,17 +70,40 @@ export async function POST(request) {
     chatState.isComplete = parsedAI.updatedState.isComplete;
     await chatState.save();
 
+    let finalMessage = parsedAI.replyToUser;
+
     if (chatState.isComplete) {
       if (chatState.userType === 'employer') {
+        // 1. Save the Job
         await Job.create({ employerPhone: sender, category: chatState.category, location: chatState.location, salary: chatState.salary });
+        
+        // 2. The Matching Engine: Find up to 3 workers with a similar category (case-insensitive)
+        const matchedWorkers = await Worker.find({
+          category: { $regex: new RegExp(chatState.category, "i") },
+          status: 'available'
+        }).limit(3);
+
+        // 3. Append matches to the final message
+        if (matchedWorkers.length > 0) {
+          finalMessage += "\n\n🔥 *Good news! We found immediate matches:*";
+          matchedWorkers.forEach((worker, index) => {
+            finalMessage += `\n\n*Profile ${index + 1}:* ${worker.category.toUpperCase()} \n📍 Location: ${worker.location} \n💰 Expected Pay: ${worker.salary} \n📞 Contact: ${worker.workerPhone}`;
+          });
+        } else {
+          finalMessage += "\n\n⏳ *We have saved your job post. We will notify you the second a verified worker matching this description registers on Kaam.ai.*";
+        }
+
       } else if (chatState.userType === 'worker') {
         await Worker.create({ workerPhone: sender, category: chatState.category, location: chatState.location, salary: chatState.salary });
       }
+      
+      // Reset state so they can use the AI again
       await ChatState.deleteOne({ phoneNumber: sender }); 
     }
 
+    // Send the final compiled message back to WhatsApp
     const twiml = new twilio.twiml.MessagingResponse();
-    twiml.message(parsedAI.replyToUser);
+    twiml.message(finalMessage);
     return new NextResponse(twiml.toString(), { status: 200, headers: { 'Content-Type': 'text/xml' } });
 
   } catch (error) {
