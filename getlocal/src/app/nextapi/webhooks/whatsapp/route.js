@@ -3,6 +3,7 @@ import twilio from 'twilio';
 import dbConnect from '@/lib/mongoose';
 import ChatState from '@/models/ChatState';
 import Job from '@/models/Job';
+import Worker from '@/models/Worker';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,31 +14,31 @@ export async function POST(request) {
     const incomingMsg = formData.get('Body');
     const sender = formData.get('From'); 
 
-    // 1. Get or Create Conversation State
     let chatState = await ChatState.findOne({ phoneNumber: sender });
     if (!chatState) {
       chatState = await ChatState.create({ phoneNumber: sender });
     }
 
-    // 2. The AI Brain (Groq Cloud)
-    const systemPrompt = `You are Kaam.ai, an AI hiring assistant for Hyderabad. Your goal is to help employers post a job.
-    You receive the user's message and their current JSON state.
+    const systemPrompt = `You are Kaam.ai, a hiring assistant in Hyderabad. You connect employers with workers.
     Current State: ${JSON.stringify({
-      jobCategory: chatState.jobCategory,
+      userType: chatState.userType,
+      category: chatState.category,
       location: chatState.location,
       salary: chatState.salary,
       isComplete: chatState.isComplete
     })}
     
     Instructions:
-    1. Extract any mentioned job category (e.g., Maid, Driver), location (e.g., Gachibowli), or salary.
-    2. If any of those three are missing (null), your reply MUST be a short, polite question asking for ONE missing piece of info.
-    3. If all three are filled, set isComplete to true and reply: "Perfect! I have saved your requirement. I am searching for verified staff now and will send profiles shortly."
+    1. If userType is null, you MUST figure out if they want to HIRE someone ('employer') or FIND a job ('worker'). Ask them directly if unclear.
+    2. If userType is 'employer', ask for missing category (who they want to hire), location, and salary offered.
+    3. If userType is 'worker', ask for missing category (their profession/skills), location, and expected salary.
+    4. Ask for only ONE missing piece of info at a time.
+    5. If userType, category, location, and salary are all filled, set isComplete to true and reply with a final confirmation.
     
-    You MUST respond ONLY in valid JSON format matching this exact structure:
+    Respond ONLY in JSON format:
     {
-      "updatedState": { "jobCategory": "string or null", "location": "string or null", "salary": "string or null", "isComplete": boolean },
-      "replyToUser": "The actual conversational text you want to send back to the user on WhatsApp"
+      "updatedState": { "userType": "employer or worker or null", "category": "string or null", "location": "string or null", "salary": "string or null", "isComplete": boolean },
+      "replyToUser": "Your conversational text reply"
     }`;
 
     const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -57,53 +58,35 @@ export async function POST(request) {
     });
 
     const aiData = await aiResponse.json();
-    
-    // Log the actual error from Groq if they reject the request
-    if (aiData.error) {
-        console.error("Groq API Error:", aiData.error);
-        throw new Error(`Groq API Error: ${aiData.error.message}`);
-    }
-
-    // Fallback if AI fails to return choices
-    if (!aiData.choices || !aiData.choices[0].message.content) {
-        console.error("Malformed AI Data:", aiData);
-        throw new Error("Invalid AI Response Payload");
-    }
+    if (aiData.error) throw new Error(`Groq Error: ${aiData.error.message}`);
+    if (!aiData.choices) throw new Error("Invalid AI Response");
 
     const parsedAI = JSON.parse(aiData.choices[0].message.content);
 
-    // 3. Update Database with AI's extraction
-    chatState.jobCategory = parsedAI.updatedState.jobCategory;
+    chatState.userType = parsedAI.updatedState.userType;
+    chatState.category = parsedAI.updatedState.category;
     chatState.location = parsedAI.updatedState.location;
     chatState.salary = parsedAI.updatedState.salary;
     chatState.isComplete = parsedAI.updatedState.isComplete;
     await chatState.save();
 
-    // 4. If AI finished the form, convert it to a live Job post
     if (chatState.isComplete) {
-      await Job.create({
-        employerPhone: sender,
-        category: chatState.jobCategory,
-        location: chatState.location,
-        salary: chatState.salary
-      });
-      // Reset state so they can post another job later
+      if (chatState.userType === 'employer') {
+        await Job.create({ employerPhone: sender, category: chatState.category, location: chatState.location, salary: chatState.salary });
+      } else if (chatState.userType === 'worker') {
+        await Worker.create({ workerPhone: sender, category: chatState.category, location: chatState.location, salary: chatState.salary });
+      }
       await ChatState.deleteOne({ phoneNumber: sender }); 
     }
 
-    // 5. Send AI's conversational reply back to WhatsApp
     const twiml = new twilio.twiml.MessagingResponse();
     twiml.message(parsedAI.replyToUser);
-
-    return new NextResponse(twiml.toString(), {
-      status: 200,
-      headers: { 'Content-Type': 'text/xml' },
-    });
+    return new NextResponse(twiml.toString(), { status: 200, headers: { 'Content-Type': 'text/xml' } });
 
   } catch (error) {
     console.error("Webhook Error:", error);
     const twiml = new twilio.twiml.MessagingResponse();
-    twiml.message("Sorry, our AI is experiencing a temporary glitch. Please try again in a minute.");
+    twiml.message("Sorry, our AI is experiencing a glitch. Please try again.");
     return new NextResponse(twiml.toString(), { status: 200, headers: { 'Content-Type': 'text/xml' } });
   }
 }
