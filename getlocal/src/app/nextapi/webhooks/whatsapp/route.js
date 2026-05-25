@@ -47,7 +47,7 @@ export async function POST(request) {
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'gemma2-9b-it',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: incomingMsg }
@@ -58,9 +58,16 @@ export async function POST(request) {
 
     const aiData = await aiResponse.json();
     
-    // Fallback if AI fails to return JSON
+    // Log the actual error from Groq if they reject the request
+    if (aiData.error) {
+        console.error("Groq API Error:", aiData.error);
+        throw new Error(`Groq API Error: ${aiData.error.message}`);
+    }
+
+    // Fallback if AI fails to return choices
     if (!aiData.choices || !aiData.choices[0].message.content) {
-        throw new Error("Invalid AI Response");
+        console.error("Malformed AI Data:", aiData);
+        throw new Error("Invalid AI Response Payload");
     }
 
     const parsedAI = JSON.parse(aiData.choices[0].message.content);
