@@ -6,6 +6,7 @@ const chatStateSchema = new mongoose.Schema({
   category: { type: String, default: null },
   location: { type: String, default: null },
   salary: { type: String, default: null },
+  documentUrl: { type: String, default: null }, // Stores the Twilio Media URL
   isComplete: { type: Boolean, default: false },
   updatedAt: { type: Date, default: Date.now }
 });
