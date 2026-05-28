@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { VoiceIntroPlayer } from '@/components/VoiceIntroPlayer';
 import { calculateDetailedMatchScore } from '@/lib/matchScore';
@@ -24,6 +25,7 @@ function scoreColor(score) {
 
 export default function CandidatesPage() {
   const { user, token, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [candidates, setCandidates] = useState([]);
   const [myJobs, setMyJobs] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -33,6 +35,8 @@ export default function CandidatesPage() {
   const [loading, setLoading] = useState(true);
   const [unlockingId, setUnlockingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [roleFilter, setRoleFilter] = useState('All');
+  const [voiceOnly, setVoiceOnly] = useState(false);
 
   const showToast = (msg, type = 'info') => {
     setToast({ msg, type });
@@ -87,7 +91,8 @@ export default function CandidatesPage() {
       });
       const data = await res.json();
       if (res.status === 402) {
-        showToast('Not enough credits. Tap "Buy Credits" to top up.', 'error');
+        showToast('Not enough credits — taking you to checkout…', 'error');
+        setTimeout(() => router.push('/pricing'), 1200);
         return;
       }
       if (!res.ok) {
@@ -107,6 +112,23 @@ export default function CandidatesPage() {
 
   const selectedJob = myJobs.find((j) => j._id === selectedJobId);
 
+  const categories = useMemo(() => {
+    const set = new Set();
+    candidates.forEach((c) => {
+      const role = c.role_category || c.category;
+      if (role) set.add(role);
+    });
+    return ['All', ...Array.from(set).sort()];
+  }, [candidates]);
+
+  const filteredCandidates = useMemo(() => {
+    return candidates.filter((c) => {
+      if (voiceOnly && !c.audio_interview_url) return false;
+      if (roleFilter !== 'All' && (c.role_category || c.category) !== roleFilter) return false;
+      return true;
+    });
+  }, [candidates, voiceOnly, roleFilter]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -122,7 +144,7 @@ export default function CandidatesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-white" data-testid="candidates-title">Browse Talent</h1>
-            <p className="text-sm text-[#8B95A5]">{candidates.length} candidates available</p>
+            <p className="text-sm text-[#8B95A5]">{filteredCandidates.length} of {candidates.length} candidates</p>
           </div>
           <a
             href="/pricing"
@@ -134,9 +156,41 @@ export default function CandidatesPage() {
           </a>
         </div>
 
+        {/* Filters: role/category + voice intros only */}
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="flex-1 bg-[#151B2D] border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#0052CC] appearance-none"
+            data-testid="role-filter"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat === 'All' ? 'All Roles' : cat}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setVoiceOnly((v) => !v)}
+            aria-pressed={voiceOnly}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all border shrink-0 ${
+              voiceOnly
+                ? 'bg-[#36B37E] border-[#36B37E] text-white'
+                : 'bg-[#151B2D] border-white/10 text-[#8B95A5]'
+            }`}
+            data-testid="voice-only-toggle"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+            </svg>
+            Voice Only
+          </button>
+        </div>
+
         {/* Match against my job */}
         {myJobs.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-2">
             <select
               value={selectedJobId}
               onChange={(e) => setSelectedJobId(e.target.value)}
@@ -160,13 +214,13 @@ export default function CandidatesPage() {
             <div className="w-12 h-12 border-4 border-[#0052CC] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-[#8B95A5]">Loading candidates...</p>
           </div>
-        ) : candidates.length === 0 ? (
+        ) : filteredCandidates.length === 0 ? (
           <div className="text-center py-16" data-testid="candidates-empty">
-            <p className="text-white font-medium text-lg mb-1">No candidates yet</p>
-            <p className="text-[#8B95A5] text-sm">New profiles appear here as workers register.</p>
+            <p className="text-white font-medium text-lg mb-1">No candidates match</p>
+            <p className="text-[#8B95A5] text-sm">Try clearing the role filter or the Voice Only toggle.</p>
           </div>
         ) : (
-          candidates.map((c) => {
+          filteredCandidates.map((c) => {
             const isUnlocked = unlocked.includes(c._id) || !!revealed[c._id];
             const phone = revealed[c._id] || c.phone;
             const loc = locationLabel(c.address || c.location);
