@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 const AuthContext = createContext(null);
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ['/hire', '/post-job'];
+const PROTECTED_ROUTES = ['/hire', '/post-job', '/candidates'];
 // Routes that are only for guests (redirect to /hire if logged in)
 const GUEST_ROUTES = ['/login', '/signup'];
 

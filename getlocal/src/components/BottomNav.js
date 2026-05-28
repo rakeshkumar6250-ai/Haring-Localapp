@@ -10,6 +10,7 @@ export default function BottomNav() {
     { href: '/join', icon: 'mic', label: 'Join' },
     { href: '/jobs', icon: 'search', label: 'Jobs' },
     { href: '/hire', icon: 'briefcase', label: 'Hire' },
+    { href: '/candidates', icon: 'users', label: 'Talent' },
     { href: '/admin/support', icon: 'support', label: 'Admin' },
   ];
 
@@ -53,6 +54,15 @@ export default function BottomNav() {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
         );
+      case 'users':
+        return (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        );
       case 'wallet':
         return (
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
@@ -75,7 +85,7 @@ export default function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 px-6 py-2 rounded-xl transition-all ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
                 active 
                   ? 'bg-[#0052CC]/10' 
                   : 'hover:bg-white/5 active:bg-white/10'
