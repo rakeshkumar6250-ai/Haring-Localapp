@@ -106,8 +106,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - [ ] Real commute calculation (Maps API)
 - [ ] Video interviews, AI job matching, Analytics dashboard
 
-### Phase 13: WhatsApp Voice-Note Transcription (May 2026)
-- **`audioProcessor.js`**: Downloads Twilio media (basic auth), transcribes with OpenAI Whisper (`whisper-1`, transcriptions endpoint preserves original language/script e.g. Telugu). Vercel Blob archival is now best-effort/non-fatal (only runs if `BLOB_READ_WRITE_TOKEN` set) and never blocks the transcript. Temp file cleanup in `finally`.
-- **Webhook (`/nextapi/webhooks/whatsapp`)**: Reads `MediaContentType0`. Audio media → transcribe → feed text into the Groq state machine as if typed. Non-audio media (image/PDF) → still saved as `documentUrl` for employer ID verification. Failed transcription → friendly retry message (no crash).
-- **Required env to run live**: `GROQ_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `OPENAI_API_KEY` (OpenAI key already set; Groq + Twilio keys must be added to `/app/getlocal/.env`).
-- **Tested**: curl simulation of text + audio Twilio POSTs both return valid TwiML 200.
+### Phase 13: WhatsApp Voice-Note Transcription + DB Unification (May 2026)
+- **`audioProcessor.js`**: Downloads Twilio media (basic auth), transcribes with OpenAI Whisper (`whisper-1`, transcriptions endpoint preserves original language/script e.g. Telugu). Vercel Blob archival is best-effort/non-fatal (only if `BLOB_READ_WRITE_TOKEN` set). Temp file cleanup in `finally`.
+- **Webhook fully rewritten (`/nextapi/webhooks/whatsapp`)**:
+  - Media routing via `MediaContentType0`: image/PDF → `documentUrl` (employer verification); audio → Whisper transcription fed into Groq as user input, `audio_interview_url` captured.
+  - **DB UNIFICATION**: Mongoose `Worker` & `Job` models **deleted/deprecated**. Webhook now writes directly to native MongoDB: workers → `candidates` collection via `getCandidates().updateOne(upsert)` with `{phone, name, role_category, address, salary_expected, source:'whatsapp', ai_source:'whatsapp_groq_whisper', audio_interview_url, trust_score:70, verification_status:'pending'}`; employers → `getJobs().insertOne()` then regex search of `candidates` (limit 3), returning matches (with clickable `audio_interview_url`) in the reply.
+  - `ChatState` extended with `name` + `audioInterviewUrl` (voice note persists across turns). Cleared after completion.
+- **Admin route (`/nextapi/admin`) updated**: now reads jobs/candidates from native collections (Mongoose models removed) and normalizes field names for the dashboard.
+- **Required env to run live**: `GROQ_API_KEY` (NOT set — only blocker for live test), `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `OPENAI_API_KEY` (already set). Add to `/app/getlocal/.env`.
+- **Tested**: curl simulation of text/audio/document Twilio POSTs all return valid TwiML 200; admin returns 401 without key. No code errors (only missing Groq key prevents the live AI conversation).
