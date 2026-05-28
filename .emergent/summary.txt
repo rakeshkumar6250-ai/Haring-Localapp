@@ -1,277 +1,147 @@
 <analysis>**original_problem_statement:**
-The user wants to build a two-sided marketplace for blue-collar hiring called GetLocal V2.
+The user wanted to upgrade the app to Kaam.ai (a localized blue-collar hiring marketplace in Hyderabad). The requests spanned multiple phases:
+1. Complete the Phase 8 Employer Unlock UI.
+2. Implement Employer Authentication with SMS OTP verification.
+3. Fix strict ESLint/TypeScript errors breaking Vercel builds.
+4. Overhaul the UI (Landing Page, Job Feed, Pricing, Admin Dashboard).
+5. Build an autonomous, dual-sided WhatsApp Webhook powered by Twilio, Mongoose, Groq API (llama-3.3-70b-versatile), and OpenAI Whisper to handle job postings and candidate registrations entirely via chat.
 
-The current request is to implement **Phase 8: The Employer 'Unlock' Experience** on the frontend. This involves:
-1.  **Candidate Card Updates ( page):**
-    *   Blur non-unlocked contact info.
-    *   Replace the 'WhatsApp' button with a '₹50 to Unlock Profile' button.
-    *   Display the  badge.
-    *   Add a 'View Why?' tooltip showing match details ( and  fields).
-2.  **Credit Dashboard:**
-    *   Create a header component showing 'Credits: X' and a 'Buy More' link.
-    *   Build a 'Top Up Credits' modal with options (10 credits for ₹500, 25 for ₹1000).
-3.  **Frontend Razorpay Integration:**
-    *   Install the Razorpay Checkout script.
-    *   On Buy, call the existing  endpoint and open the Razorpay checkout.
-    *   Use a placeholder/dummy success message for now, as Razorpay keys have not been provided yet.
+**User's preferred language:** English (You MUST respond in English only).
 
-**User's preferred language**: English
+**what currently exists?** 
+A Next.js full-stack marketplace named Kaam.ai. It features JWT-based employer authentication, a Web UI for job posting () and browsing (), an Admin Dashboard, and a subscription pricing page. The core feature is a highly advanced, autonomous WhatsApp Webhook () that acts as a state machine using Mongoose (, ,  models) and the Groq API to seamlessly converse with users, handle document uploads (Twilio Media), and instantly match workers with jobs. A utility for processing Twilio voice notes via OpenAI Whisper also exists.
 
-**what currently exists?**
-The project is a full-stack Next.js application. The backend is implemented as Next.js API routes. Core features are complete, including:
--   **Candidate & Employer Onboarding:** Manual and voice-based (via Whisper) candidate registration. Employer registration with KYC.
--   **AI Pipeline:** Real-time audio transcription (Whisper) and structured data extraction (GPT-4o-mini).
--   **KYC System:** Document upload and admin approval flow for both candidates and employers.
--   **Job & Candidate Dashboards:** Employers can post jobs () and browse/filter candidates (). Candidates can browse jobs ().
--   **Payment Backend:** A full Razorpay integration is built on the backend, including order creation () and payment verification () webhooks. Employer schemas have a  field.
--   **Matching Engine:** A  function exists. A mock notification system ( DB collection) logs potential matches between candidates and jobs.
-
-**Last working item**:
-    - Last item agent was working: The agent was about to start implementing the frontend for the **Employer 'Unlock' Experience** as requested by the user. The agent's last action was to read the existing  file to gather context before making changes.
-    - Status: NOT STARTED
+**Last working item:**
+    - Last item agent was working: The user requested the creation of a utility function ( in ) to handle incoming Twilio voice notes, store them in Vercel Blob, and transcribe them using OpenAI Whisper. The agent successfully created the file.
+    - Status: IN PROGRESS (File created, but not yet integrated into the WhatsApp webhook logic).
     - Agent Testing Done: N
-    - Which testing method agent to use? screenshot tool to verify the UI changes on the  page. After the full UI is implemented, use the frontend testing agent to validate the entire unlock and purchase flow.
+    - Which testing method agent to use? backend minor issue: Use  or  to manually test the audio processing pipeline, or wait for the user to instruct integration into the webhook.
     - User Testing Done: N
 
-**All Pending/In progress Issue list**:
-  None.
+**All Pending/In progress Issue list:**
+None.
 
-**In progress Task List**:
-  - **Task 1: (P0) Implement Frontend for Employer 'Unlock' & Credit System**
-     - **Where to resume:** Start by modifying .
-     - **What will be achieved with this?** A complete user-facing flow for employers to see candidate match scores, spend credits to unlock profiles, and buy more credits via a Razorpay modal.
-     - **Status:** NOT STARTED
-     - **Should Test frontend/backend/both after fix?** frontend
-     - **Blocked on something:** The user has not provided Razorpay keys, so the final checkout step should be mocked with a Dummy Checkout success message as requested.
+**In progress Task List:**
+  - Task 1: Integrate Voice Note Processing into Webhook
+     - Where to resume: Review  and determine how to integrate it into .
+     - What will be achieved with this? The autonomous WhatsApp AI will be able to process user voice notes, transcribe them, and feed the text into the Groq LLM state machine.
+     - Status: NOT STARTED (Integration pending user instruction).
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on something: User's explicit instructions on where/how to wire it into the webhook.
 
 **Upcoming and Future Tasks**
-- **P1: Real WhatsApp Integration:** Replace the current mock  database collection with a real WhatsApp Business API provider (e.g., Twilio, Interakt) to send automated match alerts.
-- **P2: Real-time Location/Commute:** Replace the hardcoded commute time with a real calculation using a maps API.
+  - P1: Replace mock OTP (123456) with a real SMS provider (Twilio/MSG91).
+  - P1: Wire Apply Now button to a real application flow (candidate applies to job).
+  - P1: Activate Razorpay with real keys (currently using placeholder mock).
+  - P2: Real commute calculation (Maps API).
+  - P2: Video interviews, AI job matching, Analytics dashboard.
 
 **Completed work in this session**
-- **Real Transcription Integration:** Replaced the mock transcription with a full OpenAI pipeline using Whisper for transcription and GPT-4o-mini for structured data extraction. Includes a fallback to mock data on API failure. Implemented in .
-- **Employer KYC Flow:**
-  - Expanded  schema (, ).
-  - Built  dashboard for admin approval.
-  - Implemented a 3-step job posting UI at .
-- **Candidate KYC Flow:**
-  - Expanded  schema (, , , etc.).
-  - Updated  page with new fields and an ID upload option.
-  - Enhanced  page with filters for the new candidate attributes.
-- **Razorpay Payment Backend:**
-  - Integrated Razorpay SDK and added  and  to .
-  - Created payment routes:  and .
-  - Updated employer schema with a  field.
-- **Automated WhatsApp Matching Engine (Mock):**
-  - Created a matching utility: .
-  - Created a database log for mock notifications:  schema.
-  - Integrated matching triggers into candidate creation () and job creation () routes.
-- **Comprehensive Testing:** Successfully executed multiple full-stack test suites using the , covering the AI pipeline, KYC flows, matchmaking filters, and payment APIs, achieving 100% pass rates.
+- Employer Unlock Experience UI () with match score tooltips and credit purchasing modal.
+- Employer Authentication (Signup, Login, JWT session, Mock OTP) and route protection.
+- Fixed 11 ESLint/TypeScript errors enabling successful Vercel builds.
+- Job APIs refactored ( limit 20,  simplified fields).
+- UI Rebranding to Kaam.ai (Green hero section, bilingual CTAs, category grids, subscription Paywall).
+- Autonomous WhatsApp Webhook using Twilio, Mongoose, and Groq ().
+- Dual-sided marketplace logic ( and  models) with instant matching appended to AI responses.
+- Twilio Media interception for Employer ID verification ().
+- Secure Admin Command Center Dashboard ().
+- Utility for processing Twilio Audio with OpenAI Whisper ().
 
 **Earlier issues found/mentioned but not fixed**
 None.
 
 **Known issue recurrence from previous fork**
-  - **Issue recurrence in previous fork:** Preview URL Accessibility. The agent spent significant effort debugging why the preview URL was inaccessible (returning 404s or platform inactive pages). This involved restarting services, changing ports, configuring , and setting up proxies. This appears to be a recurring platform-level routing issue.
-  - **Recurrence count:** High (occurred in previous and current sessions).
-  - **Status:** RESOLVED (workaround). The agent confirmed internal services were running correctly via  to , bypassing the unreliable public URL for testing.
+  - Issue recurrence in previous fork: Next.js server crash/ECONNREFUSED proxy issues (platform-level routing).
+  - Recurrence count: 2
+  - Status: RESOLVED (Workaround: Agent started  manually).
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frameworks**: Next.js (Full Stack)
-- **Database**: MongoDB (via  driver)
-- **AI**: OpenAI API (usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit SDK for Whisper & GPT-4o-mini)
-- **Payments**: Razorpay ( SDK)
-- **Styling**: TailwindCSS
-- **Core Logic**: REST APIs, Serverless Functions (Next.js API Routes), File Uploads ().
+- Next.js (Full Stack)
+- TailwindCSS
+- MongoDB (Dual usage: Native driver for legacy routes, Mongoose ODM for new WhatsApp AI system).
+- JWT Authentication & Mock OTP.
+- Groq Cloud API () for state-machine conversational AI.
+- Twilio WhatsApp Webhooks & TwiML.
+- OpenAI Whisper for audio transcription.
+- Vercel Blob for persistent media storage.
 
 **key DB schema**
-- **users (employers)**: 
-- **candidates**: 
-- **jobs**: 
-- **outgoing_logs**: 
+  -  (Mongoose): 
+  -  (Mongoose): 
+  -  (Mongoose): 
+  -  (Native MongoDB): 
 
 **changes in tech stack**
-- usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit: Node.js SDK added for transcription and data extraction.
-- : Node.js SDK added for payment processing.
-- : Used for handling multipart/form-data for file uploads.
+  - Added  for object modeling in parallel with the native MongoDB driver.
+  - Added  and  for custom authentication.
+  - Added  SDK for handling incoming/outgoing WhatsApp messages.
+  - Added  for audio storage.
+  - Integrated Groq API (replacing OpenAI for chat completions due to latency/model preferences).
 
 **All files of reference**
-- **Current Task:**
-  - : The primary file to be modified for the unlock UI.
-  - : To be called by the new Buy Credits modal.
-- **Recently Created/Modified:**
-  - : The core logic for scoring matches.
-  - : API to view the mock notifications.
-  - : Backend routes for Razorpay.
-  - : Updated with AI pipeline and matching trigger.
-  - : Updated with matching trigger.
-  - : Unified KYC dashboard.
-  - : New 3-step job posting form.
+  -  (Recently created, holds audio processing logic).
+  -  (Core autonomous webhook).
+  - , ,  (Mongoose schemas).
+  - ,  (Rebranded UI).
+  - ,  (Admin dashboard).
+  -  (Mongoose connection logic).
 
 **Areas that need refactoring**:
-- The WhatsApp notification system is a mock using the  collection. This should be replaced with a production-ready integration.
+The application currently maintains two separate database connection patterns:  (Native driver) and  (ODM). These might need unification to prevent connection pooling issues in the future.
 
 **key api endpoints**
-- : Creates a Razorpay order.
-- : Webhook to verify payment and grant credits.
-- : Fetches the log of mock notifications sent.
-- : Approves/rejects employer KYC.
-- : Approves/rejects candidate KYC.
+  -  (Twilio Webhook entry point).
+  -  (Admin data fetch).
+  -  (Web job posting).
+  -  &  &  (Employer Auth).
 
 **Critical Info for New Agent**
-- **Focus on Frontend:** The immediate task is purely frontend development on the  page. All required backend APIs (, wallet logic) are already built and tested.
-- **Mock Razorpay Checkout:** Do not wait for Razorpay keys. The user explicitly requested a Dummy Checkout success message to test the UI flow. The real keys will be provided later.
-- **Platform Instability:** Be aware that the external preview URL can be unreliable. For testing,  commands against  are a more stable way to verify backend functionality. Do not spend excessive time debugging the preview URL if internal services are confirmed to be running.
-- **Project Location:** The entire project is inside the  directory. Ensure your working directory is set correctly.
+- **Git Push:** DO NOT use terminal git commands to push. Use the Save to GitHub button in the chat UI.
+- **WhatsApp Webhook Architecture:** The webhook acts as a state machine. It reads state from , passes it to the Groq LLM, parses the JSON response, updates state, and creates  or  records when  is true. It handles image attachments () for employer verification.
+- **Dual Languages:** The Groq AI is explicitly instructed to mirror the user's language (English, Telugu script, or transliterated Telugu).
+- **Environment Variables:** The app relies heavily on , , , , and .
 
 **documents and test reports created in this job**
-- : Updated with all completed features.
-- Test reports are available from the  runs, confirming the stability of the KYC, AI, and payment backend features. The last report covered the matching engine.
+  - 
+  - 
+  - 
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User:** Requests an automated WhatsApp matching engine.
-2.  **Agent:** Implements the matching logic and mock notification system ().
-3.  **Agent:** Tests the matching triggers end-to-end and confirms notifications are logged correctly.
-4.  **Agent:** Calls the testing agent for a full regression test.
-5.  **Testing Agent:** Reports 17/17 tests passed.
-6.  **Agent:** Summarizes the successful implementation.
-7.  **User:** (Current task) Requests the frontend Employer Unlock Experience, including a credit system UI, a Buy Credits modal, and frontend Razorpay integration.
-8.  **Agent:** Acknowledges the request.
-9.  **Agent:** Reads the  file to get context.
-10. **Agent:** (Pending) Is now ready to start implementing the UI changes on the hire page.
+ 1. User asked to add Health & Fitness category to Landing Page (Done).
+ 2. User asked to create Twilio Webhook base endpoint (Done).
+ 3. User asked to install Mongoose and create ChatState / Job models (Done).
+ 4. User asked to upgrade webhook to use Groq AI (gemma2) as the brain (Done).
+ 5. User asked to update Groq model to  and add error logging (Done).
+ 6. User asked to implement dual-sided logic by adding  model and  (Done).
+ 7. User asked to append matched workers to AI's response upon job completion (Done).
+ 8. User asked to intercept Twilio Media () for employer verification and enforce language mirroring (Done).
+ 9. User asked to build a secure Admin Dashboard () and API (Done).
+ 10. User requested an end-to-end architecture code audit (Done).
+ 11. User asked to create  in  (Done, pending integration).
 
 **Project Health Check:**
-- **Broken**: None.
-- **Mocked**:
-    - WhatsApp Notifications (logged to DB instead of being sent).
-    - Razorpay Checkout (frontend will use a dummy success message until keys are provided).
+  - Broken: None
+  - Mocked: Razorpay checkout integration, OTP generation (Hardcoded ).
 
 **3rd Party Integrations**
-- **OpenAI GPT-4o-mini & Whisper**: Uses usage: openai [-h] [-v] [-b API_BASE] [-k API_KEY] [-p PROXY [PROXY ...]]
-              [-o ORGANIZATION] [-t {openai,azure}]
-              [--api-version API_VERSION] [--azure-endpoint AZURE_ENDPOINT]
-              [--azure-ad-token AZURE_AD_TOKEN] [-V]
-              {api,tools,migrate,grit} ...
-
-positional arguments:
-  {api,tools,migrate,grit}
-    api                 Direct API calls
-    tools               Client side tools for convenience
-
-options:
-  -h, --help            show this help message and exit
-  -v, --verbose         Set verbosity.
-  -b API_BASE, --api-base API_BASE
-                        What API base url to use.
-  -k API_KEY, --api-key API_KEY
-                        What API key to use.
-  -p PROXY [PROXY ...], --proxy PROXY [PROXY ...]
-                        What proxy to use.
-  -o ORGANIZATION, --organization ORGANIZATION
-                        Which organization to run as (will use your default
-                        organization if not specified)
-  -t {openai,azure}, --api-type {openai,azure}
-                        The backend API to call, must be `openai` or `azure`
-  --api-version API_VERSION
-                        The Azure API version, e.g.
-                        'https://learn.microsoft.com/en-us/azure/ai-
-                        services/openai/reference#rest-api-versioning'
-  --azure-endpoint AZURE_ENDPOINT
-                        The Azure endpoint, e.g.
-                        'https://endpoint.openai.azure.com'
-  --azure-ad-token AZURE_AD_TOKEN
-                        A token from Azure Active Directory,
-                        https://www.microsoft.com/en-
-                        us/security/business/identity-access/microsoft-entra-
-                        id
-  -V, --version         show program's version number and exit SDK with a user-provided API key.
-- **Razorpay**: Uses  SDK. Backend is fully integrated. Frontend integration is pending.
-- **Browser Speech Synthesis ()**: Used for audio job descriptions.
-- **WhatsApp**: Mocked. No direct API integration yet.
+  - Groq API (Chat completions) — requires User API Key
+  - OpenAI (Whisper API) — requires User API Key
+  - Twilio (WhatsApp API) — requires User API Key
+  - Razorpay (Payments) — requires User API Key
 
 **Testing status**
-- Testing agent used after significant changes: YES
-- Troubleshoot agent used after agent stuck in loop: NO
-- Test files created: None explicitly, but the testing agent ran comprehensive internal suites.
-- Known regressions: None. All recent test runs passed 100%.
+  - Testing agent used after significant changes: YES
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None explicitly by agent, used existing ones.
+  - Known regressions: None
 
 **Credentials to test flow:**
-- **OpenAI:** The user's  is in .
-- **Razorpay:** Keys are not yet provided. Use placeholders or mock the checkout flow on the frontend as requested.</analysis>
+  - Mock OTP for signup: 
+  - Admin Dashboard: Requires passing the  key which needs to be set in the  file.
+
+**What agent forgot to execute**
+None. The agent successfully created the requested audio processing utility in the final prompt, but the user did not explicitly ask to hook it up to the Twilio Webhook route yet. The next agent should expect to integrate this.</analysis>
