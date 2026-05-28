@@ -97,14 +97,24 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - [x] Employer Unlock Experience frontend
 - [x] Employer Authentication (JWT + phone/password)
 - [x] SMS OTP Verification (Mock: 123456)
-- [x] Protected Routes (/hire, /post-job, payment/wallet/unlock endpoints)
+- [x] Protected Routes (/hire, /post-job, /candidates, payment/wallet/unlock endpoints)
 - [x] Credit Binding (wallet tied to authenticated employer)
 - [x] WhatsApp voice-note transcription (Whisper) wired into webhook (May 2026)
+- [x] DB unification: WhatsApp writes direct to native candidates/jobs; admin unified (May 2026)
+- [x] Employer Talent Storefront `/candidates` with free voice intro + paywall unlock (May 2026)
 - [ ] Activate Razorpay with real keys
 - [ ] Real WhatsApp delivery (Interakt/Twilio/Cloud API)
 - [ ] Real SMS OTP (replace mock 123456 with Twilio/MSG91)
 - [ ] Real commute calculation (Maps API)
 - [ ] Video interviews, AI job matching, Analytics dashboard
+
+### Phase 14: Employer Talent Storefront `/candidates` (May 2026)
+- **New page `/candidates`** (protected employer route, added to `PROTECTED_ROUTES` + BottomNav "Talent" tab). Primary talent storefront.
+- **`VoiceIntroPlayer` component** (`/src/components/VoiceIntroPlayer.js`): custom dark-theme audio player (play/pause + progress + duration). FREE & ungated for every employer — the core conversion hook. Renders only when `audio_interview_url` exists (graceful fallback otherwise).
+- **Paywall**: phone shown as `+91 ••••• •••••` placeholder until unlocked. "Unlock Contact" gold button → `POST /nextapi/unlock` (Bearer JWT) deducts 1 credit, reveals real number, flips to "Unlocked". Handles 402 insufficient-credits with toast. Wallet balance shown in gold header badge linking to `/pricing`.
+- **Match score (optional)**: "Match against my job" selector populated from the employer's own posted jobs; renders a color-coded `%` badge per candidate via `matchScore.js` `calculateDetailedMatchScore`. Hidden when employer has no jobs.
+- **Card data**: avatar initials, name, role_category, location, salary, Trust score, Verified badge.
+- **Tested**: full flow verified via screenshots — player loads/plays, unlock deducts credit (4→3), phone reveals, masked placeholders, idempotent unlock, 401 without auth. No runtime errors.
 
 ### Phase 13: WhatsApp Voice-Note Transcription + DB Unification (May 2026)
 - **`audioProcessor.js`**: Downloads Twilio media (basic auth), transcribes with OpenAI Whisper (`whisper-1`, transcriptions endpoint preserves original language/script e.g. Telugu). Vercel Blob archival is best-effort/non-fatal (only if `BLOB_READ_WRITE_TOKEN` set). Temp file cleanup in `finally`.
