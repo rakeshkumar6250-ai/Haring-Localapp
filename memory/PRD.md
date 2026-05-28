@@ -89,6 +89,13 @@ Credits system (default 0), 3 packs (10/₹500, 25/₹1000, 50/₹1750), 1 credi
 MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_SECRET
 ```
 
+### Phase 15: Talent Filters + Razorpay Activation (May 2026)
+- **/candidates filters**: Role/Category dropdown (derived from loaded candidates) + "Voice Only" toggle (filters to `audio_interview_url`). Client-side `useMemo` filtering — feed + subtitle ("X of Y candidates") update dynamically. Empty state messaging updated.
+- **/pricing rebuilt** as a credit-purchase storefront (dark theme): 3 packs (10/₹500, 25/₹1000 "Best Value", 50/₹1750 "Most Popular"), gold balance badge. Real **Razorpay Checkout.js** flow: `create-order` → load checkout.js → open Razorpay → `verify` (HMAC). Auto-falls back to mock (credits added directly) while keys are placeholders. Handles `payment.failed` + modal dismiss.
+- **Backend** `create-order`/`verify` already implement real Razorpay (SDK order + crypto HMAC SHA256 signature verify). They activate automatically once real `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` replace the `rzp_test_PLACEHOLDER`/`PLACEHOLDER_SECRET` values in `.env`.
+- **0-credit UX**: unlocking with insufficient credits → toast → auto-route to `/pricing` checkout. Verified end-to-end (402 → redirect).
+- **Tested**: filters dynamic (57→22→2); mock purchase adds credits (13→23) with toast; 0-credit employer routed to /pricing; 401 without auth. ⚠️ REAL transactions pending real Razorpay test keys from user.
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC

@@ -15,5 +15,12 @@
 - Demo candidate with a playable voice note seeded for testing the `/candidates` voice player:
   `_id: wa_demo_voice_1` (Ramesh Kumar, Plumber, audio = w3schools horse.ogg). Safe to delete.
 
+## Zero-Credit Test Account (for 0-credit → /pricing routing test)
+- Phone: `+919555000222`, Password: `test1234`, Company: `Zero Credit Co` (0 credits)
+
+## Razorpay
+- Keys in `.env` are PLACEHOLDERS (`rzp_test_PLACEHOLDER` / `PLACEHOLDER_SECRET`) → payment runs in MOCK mode.
+- To enable REAL transactions: set real `RAZORPAY_KEY_ID` (rzp_test_...) and `RAZORPAY_KEY_SECRET` in `/app/getlocal/.env`, then restart Next.js. No code change needed.
+
 ## Notes
 - Live WhatsApp AI flow requires `GROQ_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` in `/app/getlocal/.env` (OpenAI key already set).
