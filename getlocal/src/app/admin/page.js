@@ -1,8 +1,19 @@
 "use client";
 import { useState } from 'react';
 
+// Safely render any value (string, number, or nested object) as text.
+// The unified `candidates`/`jobs` collections mix web docs (location/salary
+// stored as objects) with WhatsApp docs (plain strings).
+function safeText(value) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'object') {
+    return value.label || value.display || value.name || value.amount || '—';
+  }
+  return String(value);
+}
+
 export default function AdminDashboard() {
-  const [data, setData] = useState({ chatStates: [], jobs: [], workers: [] });
+  const [data, setData] = useState({ activeChats: [], jobs: [], workers: [] });
   const [loading, setLoading] = useState(false);
   const [secretKey, setSecretKey] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -77,11 +88,11 @@ export default function AdminDashboard() {
                   <tbody>
                     {data.jobs.map(job => (
                       <tr key={job._id} className="border-b hover:bg-gray-50">
-                        <td className="p-4">{new Date(job.createdAt).toLocaleDateString()}</td>
-                        <td className="p-4 font-mono">{job.employerPhone}</td>
-                        <td className="p-4 font-semibold">{job.category}</td>
-                        <td className="p-4">{job.location}</td>
-                        <td className="p-4 text-green-700">{job.salary}</td>
+                        <td className="p-4">{job.created_at ? new Date(job.created_at).toLocaleDateString() : '—'}</td>
+                        <td className="p-4 font-mono">{safeText(job.employer_phone)}</td>
+                        <td className="p-4 font-semibold">{safeText(job.category)}</td>
+                        <td className="p-4">{safeText(job.location)}</td>
+                        <td className="p-4 text-green-700">{safeText(job.salary)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -96,19 +107,37 @@ export default function AdminDashboard() {
                 <table className="w-full text-left">
                   <thead className="bg-gray-50 border-b">
                     <tr>
+                      <th className="p-4">Name</th>
                       <th className="p-4">Phone</th>
                       <th className="p-4">Category</th>
                       <th className="p-4">Location</th>
                       <th className="p-4">Expected Pay</th>
+                      <th className="p-4">Voice Note</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.workers.map(worker => (
                       <tr key={worker._id} className="border-b hover:bg-gray-50">
-                        <td className="p-4 font-mono">{worker.workerPhone}</td>
-                        <td className="p-4 font-semibold">{worker.category}</td>
-                        <td className="p-4">{worker.location}</td>
-                        <td className="p-4 text-green-700">{worker.salary}</td>
+                        <td className="p-4 font-semibold">{safeText(worker.name)}</td>
+                        <td className="p-4 font-mono">{safeText(worker.phone)}</td>
+                        <td className="p-4 font-semibold">{safeText(worker.role_category || worker.category)}</td>
+                        <td className="p-4">{safeText(worker.address || worker.location)}</td>
+                        <td className="p-4 text-green-700">{safeText(worker.salary_expected || worker.salary)}</td>
+                        <td className="p-4">
+                          {worker.audio_interview_url ? (
+                            <a
+                              href={worker.audio_interview_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-600 underline font-bold"
+                              data-testid={`worker-audio-link-${worker._id}`}
+                            >
+                              🎤 Listen
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -118,7 +147,7 @@ export default function AdminDashboard() {
 
             {/* CHAT STATE TABLE (Debugging & ID Check) */}
             <section>
-              <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Live AI Conversations &amp; ID Uploads ({data.chatStates.length})</h2>
+              <h2 className="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Live AI Conversations &amp; ID Uploads ({data.activeChats.length})</h2>
               <div className="bg-white rounded shadow overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50 border-b">
@@ -130,7 +159,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.chatStates.map(chat => (
+                    {data.activeChats.map(chat => (
                       <tr key={chat._id} className="border-b hover:bg-gray-50">
                         <td className="p-4 font-mono">{chat.phoneNumber}</td>
                         <td className="p-4 uppercase">{chat.userType || 'Unknown'}</td>
