@@ -99,8 +99,15 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - [x] SMS OTP Verification (Mock: 123456)
 - [x] Protected Routes (/hire, /post-job, payment/wallet/unlock endpoints)
 - [x] Credit Binding (wallet tied to authenticated employer)
+- [x] WhatsApp voice-note transcription (Whisper) wired into webhook (May 2026)
 - [ ] Activate Razorpay with real keys
 - [ ] Real WhatsApp delivery (Interakt/Twilio/Cloud API)
 - [ ] Real SMS OTP (replace mock 123456 with Twilio/MSG91)
 - [ ] Real commute calculation (Maps API)
 - [ ] Video interviews, AI job matching, Analytics dashboard
+
+### Phase 13: WhatsApp Voice-Note Transcription (May 2026)
+- **`audioProcessor.js`**: Downloads Twilio media (basic auth), transcribes with OpenAI Whisper (`whisper-1`, transcriptions endpoint preserves original language/script e.g. Telugu). Vercel Blob archival is now best-effort/non-fatal (only runs if `BLOB_READ_WRITE_TOKEN` set) and never blocks the transcript. Temp file cleanup in `finally`.
+- **Webhook (`/nextapi/webhooks/whatsapp`)**: Reads `MediaContentType0`. Audio media → transcribe → feed text into the Groq state machine as if typed. Non-audio media (image/PDF) → still saved as `documentUrl` for employer ID verification. Failed transcription → friendly retry message (no crash).
+- **Required env to run live**: `GROQ_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `OPENAI_API_KEY` (OpenAI key already set; Groq + Twilio keys must be added to `/app/getlocal/.env`).
+- **Tested**: curl simulation of text + audio Twilio POSTs both return valid TwiML 200.

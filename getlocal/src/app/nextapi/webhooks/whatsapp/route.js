@@ -4,6 +4,7 @@ import dbConnect from '@/lib/mongoose';
 import ChatState from '@/models/ChatState';
 import Job from '@/models/Job';
 import Worker from '@/models/Worker';
+import { processTwilioAudioWithWhisper } from '@/lib/audioProcessor';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,20 +12,35 @@ export async function POST(request) {
   try {
     await dbConnect();
     const formData = await request.formData();
-    const incomingMsg = formData.get('Body') || '';
+    let incomingMsg = formData.get('Body') || '';
     const sender = formData.get('From'); 
     
-    // Check for attached media (Images/PDFs)
+    // Check for attached media (Images / PDFs / Voice notes)
     const numMedia = parseInt(formData.get('NumMedia') || '0');
     const mediaUrl = numMedia > 0 ? formData.get('MediaUrl0') : null;
+    const mediaContentType = numMedia > 0 ? (formData.get('MediaContentType0') || '') : '';
+    const isAudio = mediaContentType.startsWith('audio');
 
     let chatState = await ChatState.findOne({ phoneNumber: sender });
     if (!chatState) {
       chatState = await ChatState.create({ phoneNumber: sender });
     }
 
-    // If they sent a document, save it to their state immediately
-    if (mediaUrl) {
+    // Voice note: transcribe with Whisper (original language preserved) and
+    // feed the text into the conversation as if the user had typed it.
+    if (mediaUrl && isAudio) {
+      const { transcriptionText } = await processTwilioAudioWithWhisper(mediaUrl);
+      if (transcriptionText) {
+        incomingMsg = incomingMsg ? `${incomingMsg} ${transcriptionText}` : transcriptionText;
+      } else {
+        const twiml = new twilio.twiml.MessagingResponse();
+        twiml.message(
+          "Sorry, I couldn't understand your voice note. Please try again or type your message."
+        );
+        return new NextResponse(twiml.toString(), { status: 200, headers: { 'Content-Type': 'text/xml' } });
+      }
+    } else if (mediaUrl) {
+      // Non-audio media (image / PDF) is treated as a verification document.
       chatState.documentUrl = mediaUrl;
       await chatState.save();
     }
@@ -68,7 +84,7 @@ export async function POST(request) {
         model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: mediaUrl ? `[User uploaded a document] ${incomingMsg}` : incomingMsg }
+          { role: 'user', content: (mediaUrl && !isAudio) ? `[User uploaded a document] ${incomingMsg}` : incomingMsg }
         ],
         response_format: { type: "json_object" }
       })
