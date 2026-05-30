@@ -19,6 +19,14 @@ export default function LandingPage() {
         { name: 'Zumba', icon: '🎵' },
       ]
     },
+     {
+      title: "🏪 Shop & Business",
+      items: [
+        { name: 'Sales Staff', icon: '🏬' },
+        { name: 'Delivery', icon: '🛵' },
+        { name: 'Security', icon: '👮' },
+      ]
+    },
     {
       title: "🔧 Skilled Trades",
       items: [
@@ -35,14 +43,7 @@ export default function LandingPage() {
         { name: 'Nannies', icon: '👶' },
       ]
     },
-    {
-      title: "🏪 Shop & Business",
-      items: [
-        { name: 'Sales Staff', icon: '🏬' },
-        { name: 'Delivery', icon: '🛵' },
-        { name: 'Security', icon: '👮' },
-      ]
-    },
+    
   ];
 
   return (
