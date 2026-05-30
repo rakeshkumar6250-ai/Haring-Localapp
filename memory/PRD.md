@@ -114,6 +114,13 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **Verified**: lint clean; signup page renders (no runtime errors); `send` returns Twilio `pending` success; `verify` reaches Twilio (creds + Verify Service `VA8c...` authenticated — bad creds would 401, not 404); 400 validation paths work. Full `approved` path needs a real phone/device.
 - **Env (already set)**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`.
 
+### Phase 18: Job Application Flow ("Apply Now") (May 2026)
+- **Model** `src/models/Application.js` (Mongoose, `getlocal` db): `{ jobId:String, userId:String, status:'pending', createdAt }` + unique compound index `(jobId, userId)` to block duplicates at the DB level. (Strings because jobs use string `_id`s and accounts use uuid `_id`s.)
+- **API** `POST /nextapi/applications` (under `/nextapi/`, not `/api/` — ingress routing): 401 if no JWT, 400 if no `jobId`, 409 if already applied (also catches index dup-key race), 201 on success. `GET /nextapi/applications` returns the caller's `appliedJobIds` for UI hydration; returns empty list when unauthenticated.
+- **Applicant identity**: the app's only auth is the employer JWT, so the authenticated JWT account (`getAuthFromRequest` / `useAuth().user`) is the applicant (`userId = employer_id`).
+- **UI** `jobs/page.js`: wired the existing Apply button (Tailwind untouched). Logged-out click → redirect to `/login`; per-card loading ("Applying…"); success → disabled green "✓ Applied"; 409 → toast "You have already applied for this job"; applied state hydrated on load via GET.
+- **Verified**: lint clean; curl 401/201/409/400 + GET all correct; doc written to `getlocal.applications`; screenshots confirm logged-out→/login redirect, applied-on-load state, and apply→toast→"Applied" flip. Test data cleaned up.
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC
