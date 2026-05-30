@@ -104,21 +104,8 @@ Instructions:
 5. Ask for only ONE missing piece of info at a time.
 6. If all required fields are filled (including documentUrl for employers), set isComplete to true and reply with a final confirmation.
 
-Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not output plain text. Do not include markdown, backticks, or any text outside the JSON. You must use this EXACT flat format:
-{ "reply": "Your Tinglish/Telugu response here", "isComplete": false, "userType": "worker", "name": "Ramesh", "category": "driver", "location": "Hyderabad", "salary": "15000" }
-
-Few-shot examples (always output JSON exactly like this):
-User: "Nenu job kavali"
-Output: { "reply": "Sare! Mee peru cheppandi?", "isComplete": false, "userType": "worker", "name": null, "category": null, "location": null, "salary": null }
-
-User: "Naa peru Ramesh, driver job kavali Hyderabad lo"
-Output: { "reply": "Super Ramesh! Entha salary kavali?", "isComplete": false, "userType": "worker", "name": "Ramesh", "category": "driver", "location": "Hyderabad", "salary": null }
-
-Rules for the JSON fields:
-- "userType": "employer", "worker", or null.
-- "name", "category", "location", "salary": the value if known, else null.
-- "isComplete": true only when all required fields are filled (employers also need a verification document).
-- "reply": your SHORT, casual, friendly message in the user's exact language/style (one line, one question at a time).`;
+Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not output plain text. Do not include markdown, backticks, or any text outside the JSON. You MUST use this EXACT schema, replacing the bracketed placeholders dynamically based on the user's input:
+{ "reply": "<Write your conversational Tinglish/Telugu response here>", "isComplete": <boolean: true or false>, "userType": "<worker or employer, or null if not yet known>", "name": "<extract the person's name, or null>", "category": "<extract the job type, e.g., driver, cook, or null if not yet provided>", "location": "<extract the city/location, or null>", "salary": "<extract the salary/expected pay, or null>" }`;
 
     const openai = new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' });
 
