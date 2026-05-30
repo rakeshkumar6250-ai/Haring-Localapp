@@ -104,13 +104,21 @@ Instructions:
 5. Ask for only ONE missing piece of info at a time.
 6. If all required fields are filled (including documentUrl for employers), set isComplete to true and reply with a final confirmation.
 
-Respond ONLY in JSON format:
-{
-  "updatedState": { "userType": "employer or worker or null", "name": "string or null", "category": "string or null", "location": "string or null", "salary": "string or null", "isComplete": boolean },
-  "replyToUser": "Your SHORT, casual, friendly reply in the user's exact language/style (one line, one question at a time)"
-}
+Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not output plain text. Do not include markdown, backticks, or any text outside the JSON. You must use this EXACT flat format:
+{ "reply": "Your Tinglish/Telugu response here", "isComplete": false, "userType": "worker", "name": "Ramesh", "category": "driver", "location": "Hyderabad", "salary": "15000" }
 
-OUTPUT RULE: You must respond with ONLY a valid, raw JSON object. Do not include markdown formatting, backticks, or any conversational text outside the JSON.`;
+Few-shot examples (always output JSON exactly like this):
+User: "Nenu job kavali"
+Output: { "reply": "Sare! Mee peru cheppandi?", "isComplete": false, "userType": "worker", "name": null, "category": null, "location": null, "salary": null }
+
+User: "Naa peru Ramesh, driver job kavali Hyderabad lo"
+Output: { "reply": "Super Ramesh! Entha salary kavali?", "isComplete": false, "userType": "worker", "name": "Ramesh", "category": "driver", "location": "Hyderabad", "salary": null }
+
+Rules for the JSON fields:
+- "userType": "employer", "worker", or null.
+- "name", "category", "location", "salary": the value if known, else null.
+- "isComplete": true only when all required fields are filled (employers also need a verification document).
+- "reply": your SHORT, casual, friendly message in the user's exact language/style (one line, one question at a time).`;
 
     const openai = new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' });
 
@@ -124,29 +132,31 @@ OUTPUT RULE: You must respond with ONLY a valid, raw JSON object. Do not include
 
     if (!completion.choices) throw new Error('Invalid AI Response');
 
-    // Sarvam may wrap JSON in markdown fences or stray text — clean before parsing.
-    const rawContent = completion.choices[0].message.content || '';
-    const cleaned = rawContent
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim();
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    const jsonString = jsonStart !== -1 && jsonEnd !== -1 ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned;
+    const rawResponseText = (completion.choices[0].message.content || '').trim();
 
-    const parsed = JSON.parse(jsonString);
-    const state = parsed.updatedState || {};
+    // Bulletproof parsing: extract a JSON-looking object, then parse. If anything
+    // fails, treat the model output as raw conversational text and wrap it so the
+    // conversation keeps flowing (never throw a 500).
+    let parsed;
+    try {
+      const match = rawResponseText.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('No JSON object found in AI response');
+      parsed = JSON.parse(match[0]);
+    } catch {
+      console.warn('[Webhook] AI returned non-JSON, using raw-text fallback:', rawResponseText.slice(0, 120));
+      parsed = { reply: rawResponseText, isComplete: false };
+    }
 
-    // Persist updated state.
-    chatState.userType = state.userType ?? chatState.userType;
-    chatState.name = state.name ?? chatState.name;
-    chatState.category = state.category ?? chatState.category;
-    chatState.location = state.location ?? chatState.location;
-    chatState.salary = state.salary ?? chatState.salary;
-    chatState.isComplete = !!state.isComplete;
+    // Persist updated state (flat format; missing fields keep their existing value).
+    chatState.userType = parsed.userType ?? chatState.userType;
+    chatState.name = parsed.name ?? chatState.name;
+    chatState.category = parsed.category ?? chatState.category;
+    chatState.location = parsed.location ?? chatState.location;
+    chatState.salary = parsed.salary ?? chatState.salary;
+    chatState.isComplete = !!parsed.isComplete;
     await chatState.save();
 
-    let reply = parsed.replyToUser || '';
+    let reply = parsed.reply || rawResponseText || '';
 
     // ------------------------------------------------------------------
     // 3. DATABASE UNIFICATION — WRITE DIRECTLY TO NATIVE MONGODB
