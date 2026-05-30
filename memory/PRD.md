@@ -114,6 +114,25 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **Verified**: lint clean; signup page renders (no runtime errors); `send` returns Twilio `pending` success; `verify` reaches Twilio (creds + Verify Service `VA8c...` authenticated — bad creds would 401, not 404); 400 validation paths work. Full `approved` path needs a real phone/device.
 - **Env (already set)**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`.
 
+### Phase 18: Job Application Flow ("Apply Now") (May 2026)
+- **Model** `src/models/Application.js` (Mongoose, `getlocal` db): `{ jobId:String, userId:String, status:'pending', createdAt }` + unique compound index `(jobId, userId)` to block duplicates at the DB level. (Strings because jobs use string `_id`s and accounts use uuid `_id`s.)
+- **API** `POST /nextapi/applications` (under `/nextapi/`, not `/api/` — ingress routing): 401 if no JWT, 400 if no `jobId`, 409 if already applied (also catches index dup-key race), 201 on success. `GET /nextapi/applications` returns the caller's `appliedJobIds` for UI hydration; returns empty list when unauthenticated.
+- **Applicant identity**: the app's only auth is the employer JWT, so the authenticated JWT account (`getAuthFromRequest` / `useAuth().user`) is the applicant (`userId = employer_id`).
+- **UI** `jobs/page.js`: wired the existing Apply button (Tailwind untouched). Logged-out click → redirect to `/login`; per-card loading ("Applying…"); success → disabled green "✓ Applied"; 409 → toast "You have already applied for this job"; applied state hydrated on load via GET.
+- **Verified**: lint clean; curl 401/201/409/400 + GET all correct; doc written to `getlocal.applications`; screenshots confirm logged-out→/login redirect, applied-on-load state, and apply→toast→"Applied" flip. Test data cleaned up.
+
+### Phase 19: Employer Applicant Funnel — /dashboard (May 2026)
+- **API** `GET /nextapi/employer/jobs` (auth-only, 401 otherwise): returns the logged-in employer's jobs (web `employer_id===user.id` OR WhatsApp `employer_phone===user.phone`), each enriched with `applicant_count` + `applicants[]`. Each applicant is resolved: `Application.userId` → employer account → phone → matched `candidates` doc → Name/Category/Location (+ phone), with graceful fallback to the account's company name.
+- **UI** `src/app/dashboard/page.js` (new protected route, dark theme): job list with an "Applicants (n)" badge per posting; clicking a job expands the applicant list showing avatar, name, status tag (Pending/Reviewed/Contacted color-coded), Category·Location, and a green "Contact" (tel:) button. Header shows total listings + total applicants and a "+ Post Job" link.
+- **Wiring**: `/dashboard` added to `PROTECTED_ROUTES`; `/hire` header gets a "View Applicants →" link.
+- **Verified**: lint clean; curl 401 + authed response returns job with resolved applicant (name/category/location/phone from candidates join); screenshot confirms badge, expand, Pending status tag, Contact button. Test data cleaned up.
+
+### Phase 20: Applicant Status Transitions — ATS (May 2026)
+- **API** `PATCH /nextapi/applications/[id]`: auth (401) + ownership check (the caller must own the job the application belongs to → 403 otherwise) + status validation (`pending|reviewed|contacted|hired|rejected` → 400) → updates `applications.status`, returns updated doc.
+- **UI** (`/dashboard`): each applicant row now has a color-coded status **dropdown** (synced pill color) replacing the static tag. Changing it does an **optimistic UI update** + success toast ("Marked as X") while the PATCH saves in the background; on failure it reverts and shows an error toast.
+- **Verified**: lint clean; curl 401 / 400 / 403(non-owner)/ 200 all correct; status persisted to DB (`reviewed` then `hired`); screenshot confirmed dropdown change → green pill + toast → DB persistence. Test data cleaned up.
+- **Core product is now functionally complete** (post job → worker applies → employer sees applicant funnel → moves them through ATS stages).
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC
