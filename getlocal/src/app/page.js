@@ -26,7 +26,7 @@ export default function LandingPage() {
         { name: 'Electricians', icon: '⚡' },
         { name: 'Plumbers', icon: '🔧' },
       ]
-    }
+    },
       {
       title: "🏠 Home & Domestic",
       items: [
