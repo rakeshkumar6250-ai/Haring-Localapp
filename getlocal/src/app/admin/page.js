@@ -17,6 +17,42 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [secretKey, setSecretKey] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState([]);
+  const [approvingId, setApprovingId] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchPendingPayments = async (key) => {
+    try {
+      const res = await fetch(`/nextapi/admin/pending-payments?key=${key}`);
+      if (res.ok) {
+        const json = await res.json();
+        setPendingPayments(json.pending || []);
+      }
+    } catch (error) {
+      console.error('Error fetching pending payments', error);
+    }
+  };
+
+  const approvePayment = async (employerId) => {
+    setApprovingId(employerId);
+    try {
+      const res = await fetch(`/nextapi/admin/approve-payment/${employerId}?key=${secretKey}`, {
+        method: 'PATCH',
+      });
+      if (!res.ok) throw new Error('failed');
+      setPendingPayments((prev) => prev.filter((p) => p._id !== employerId));
+      showToast('Payment approved — premium access granted.');
+    } catch {
+      showToast('Failed to approve. Please retry.');
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   const fetchData = async (key) => {
     setLoading(true);
@@ -26,6 +62,7 @@ export default function AdminDashboard() {
         const json = await res.json();
         setData(json);
         setIsAuthenticated(true);
+        fetchPendingPayments(key);
       } else {
         alert("Invalid Admin Key");
       }
@@ -70,7 +107,49 @@ export default function AdminDashboard() {
           <p>Loading market data...</p>
         ) : (
           <div className="space-y-12">
-            
+
+            {/* PENDING PAYMENTS PANEL */}
+            <section data-testid="pending-payments-panel">
+              <h2 className="text-xl font-bold mb-4 text-amber-700 border-b pb-2">
+                Pending UPI Payments ({pendingPayments.length})
+              </h2>
+              <div className="bg-white rounded shadow overflow-x-auto">
+                {pendingPayments.length === 0 ? (
+                  <p className="p-4 text-gray-500">No pending payments right now.</p>
+                ) : (
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="p-4">Company</th>
+                        <th className="p-4">Phone</th>
+                        <th className="p-4">Requested</th>
+                        <th className="p-4">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingPayments.map((p) => (
+                        <tr key={p._id} className="border-b hover:bg-gray-50" data-testid={`pending-row-${p._id}`}>
+                          <td className="p-4 font-semibold">{safeText(p.company_name)}</td>
+                          <td className="p-4 font-mono">{safeText(p.phone)}</td>
+                          <td className="p-4 text-gray-500">{p.payment_requested_at ? new Date(p.payment_requested_at).toLocaleString() : '—'}</td>
+                          <td className="p-4">
+                            <button
+                              onClick={() => approvePayment(p._id)}
+                              disabled={approvingId === p._id}
+                              className="bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-700 disabled:opacity-60"
+                              data-testid={`approve-btn-${p._id}`}
+                            >
+                              {approvingId === p._id ? 'Approving...' : 'Approve'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+
             {/* JOBS TABLE */}
             <section>
               <h2 className="text-xl font-bold mb-4 text-blue-800 border-b pb-2">Active Employers &amp; Jobs ({data.jobs.length})</h2>
@@ -186,6 +265,12 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-5 py-3 rounded-lg shadow-lg font-medium" data-testid="admin-toast">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
