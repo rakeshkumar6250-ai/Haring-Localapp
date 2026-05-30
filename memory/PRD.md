@@ -127,6 +127,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **Wiring**: `/dashboard` added to `PROTECTED_ROUTES`; `/hire` header gets a "View Applicants →" link.
 - **Verified**: lint clean; curl 401 + authed response returns job with resolved applicant (name/category/location/phone from candidates join); screenshot confirms badge, expand, Pending status tag, Contact button. Test data cleaned up.
 
+### Phase 20: Applicant Status Transitions — ATS (May 2026)
+- **API** `PATCH /nextapi/applications/[id]`: auth (401) + ownership check (the caller must own the job the application belongs to → 403 otherwise) + status validation (`pending|reviewed|contacted|hired|rejected` → 400) → updates `applications.status`, returns updated doc.
+- **UI** (`/dashboard`): each applicant row now has a color-coded status **dropdown** (synced pill color) replacing the static tag. Changing it does an **optimistic UI update** + success toast ("Marked as X") while the PATCH saves in the background; on failure it reverts and shows an error toast.
+- **Verified**: lint clean; curl 401 / 400 / 403(non-owner)/ 200 all correct; status persisted to DB (`reviewed` then `hired`); screenshot confirmed dropdown change → green pill + toast → DB persistence. Test data cleaned up.
+- **Core product is now functionally complete** (post job → worker applies → employer sees applicant funnel → moves them through ATS stages).
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC

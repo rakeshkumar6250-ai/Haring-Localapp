@@ -16,11 +16,19 @@ function statusStyle(status) {
   return 'bg-amber-500/15 text-amber-400'; // pending
 }
 
+const STATUSES = ['pending', 'reviewed', 'contacted', 'hired', 'rejected'];
+
 export default function DashboardPage() {
   const { user, token, loading: authLoading } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = 'info') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 2500);
+  };
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -39,6 +47,35 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && user) load();
   }, [authLoading, user, load]);
+
+  const updateStatus = async (jobId, applicationId, newStatus) => {
+    let snapshot;
+    setJobs((prev) => {
+      snapshot = prev;
+      return prev.map((j) =>
+        j._id !== jobId
+          ? j
+          : {
+              ...j,
+              applicants: j.applicants.map((a) =>
+                a.applicationId === applicationId ? { ...a, status: newStatus } : a
+              ),
+            }
+      );
+    });
+    showToast(`Marked as ${newStatus}`, 'success');
+    try {
+      const res = await fetch(`/nextapi/applications/${applicationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error('save failed');
+    } catch {
+      if (snapshot) setJobs(snapshot);
+      showToast('Could not save status. Reverted.', 'error');
+    }
+  };
 
   if (authLoading || !user) {
     return (
@@ -145,27 +182,37 @@ export default function DashboardPage() {
                             {initials(a.name)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-white font-semibold text-sm truncate">{a.name}</p>
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusStyle(a.status)}`} data-testid="applicant-status">
-                                {a.status}
-                              </span>
-                            </div>
+                            <p className="text-white font-semibold text-sm truncate">{a.name}</p>
                             <p className="text-[#8B95A5] text-xs truncate">
                               {[a.category, a.location].filter(Boolean).join(' · ') || 'Profile details unavailable'}
                             </p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <select
+                                value={a.status}
+                                onChange={(e) => updateStatus(job._id, a.applicationId, e.target.value)}
+                                className={`text-[11px] font-semibold pl-2 pr-6 py-1 rounded-full capitalize appearance-none cursor-pointer border-0 focus:outline-none focus:ring-1 focus:ring-white/30 ${statusStyle(a.status)}`}
+                                data-testid={`status-select-${a.applicationId}`}
+                                style={{ backgroundImage: 'none' }}
+                              >
+                                {STATUSES.map((s) => (
+                                  <option key={s} value={s} className="bg-[#151B2D] text-white capitalize">
+                                    {s}
+                                  </option>
+                                ))}
+                              </select>
+                              {a.phone ? (
+                                <a
+                                  href={`tel:${a.phone}`}
+                                  className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white text-[11px] font-semibold px-3 py-1 rounded-full transition-all active:scale-95"
+                                  data-testid={`contact-${a.applicationId}`}
+                                >
+                                  Contact
+                                </a>
+                              ) : (
+                                <span className="text-[#8B95A5] text-[11px]">No contact</span>
+                              )}
+                            </div>
                           </div>
-                          {a.phone ? (
-                            <a
-                              href={`tel:${a.phone}`}
-                              className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all active:scale-95 shrink-0"
-                              data-testid={`contact-${a.applicationId}`}
-                            >
-                              Contact
-                            </a>
-                          ) : (
-                            <span className="text-[#8B95A5] text-xs shrink-0">No contact</span>
-                          )}
                         </div>
                       ))
                     )}
@@ -176,6 +223,21 @@ export default function DashboardPage() {
           })
         )}
       </div>
+
+      {toast && (
+        <div
+          className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl text-sm font-medium shadow-lg ${
+            toast.type === 'error'
+              ? 'bg-red-500/90 text-white'
+              : toast.type === 'success'
+              ? 'bg-[#36B37E] text-white'
+              : 'bg-[#151B2D] text-white border border-white/10'
+          }`}
+          data-testid="dashboard-toast"
+        >
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
