@@ -267,13 +267,22 @@ export default function DashboardPage() {
                                 ))}
                               </select>
                               {a.phone ? (
-                                <a
-                                  href={`tel:${a.phone}`}
-                                  className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white text-[11px] font-semibold px-3 py-1 rounded-full transition-all active:scale-95"
-                                  data-testid={`contact-${a.applicationId}`}
-                                >
-                                  Contact
-                                </a>
+                                premium.hasPremiumAccess ? (
+                                  <a
+                                    href={`tel:${a.phone}`}
+                                    className="bg-[#36B37E] hover:bg-[#2d9a6a] text-white text-[11px] font-semibold px-3 py-1 rounded-full transition-all active:scale-95 flex items-center gap-1"
+                                    data-testid={`contact-${a.applicationId}`}
+                                  >
+                                    📞 {a.phone}
+                                  </a>
+                                ) : (
+                                  <div className="flex flex-col items-end">
+                                    <button disabled className="bg-[#333] text-[#8B95A5] px-3 py-1 rounded-full text-[11px] font-semibold cursor-not-allowed border border-white/5 flex items-center gap-1">
+                                      🔒 +91 98XXXX
+                                    </button>
+                                    <span className="text-[9px] text-[#FABB05] mt-1">Requires Premium</span>
+                                  </div>
+                                )
                               ) : (
                                 <span className="text-[#8B95A5] text-[11px]">No contact</span>
                               )}
@@ -313,14 +322,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* QR placeholder (image file swapped in later) */}
-            <div className="bg-white/10 border border-white/10 rounded-xl aspect-square w-48 mx-auto flex flex-col items-center justify-center text-[#8B95A5] mb-4" data-testid="upi-qr-placeholder">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
-                <line x1="14" y1="14" x2="14" y2="21"/><line x1="18" y1="14" x2="18" y2="18"/><line x1="21" y1="14" x2="21" y2="21"/>
-              </svg>
-              <span className="text-xs mt-2">UPI QR Code</span>
-            </div>
+            <img src="/upi-qr.png" alt="Scan to Pay" className="w-48 h-48 mx-auto mb-4 rounded-xl shadow-md border-2 border-white/10 object-cover" data-testid="upi-qr-real" />
 
             <p className="text-[#8B95A5] text-sm text-center mb-5">
               Scan &amp; pay <span className="text-white font-semibold">₹99</span> via any UPI app to unlock candidate contacts.
