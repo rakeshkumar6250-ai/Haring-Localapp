@@ -107,32 +107,20 @@ Instructions:
 Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not output plain text. Do not include markdown, backticks, or any text outside the JSON. You MUST use this EXACT schema, replacing the bracketed placeholders dynamically based on the user's input:
 { "reply": "<Write your conversational Tinglish/Telugu response here>", "isComplete": <boolean: true or false>, "userType": "<worker or employer, or null if not yet known>", "name": "<extract the person's name, or null>", "category": "<extract the job type, e.g., driver, cook, or null if not yet provided>", "location": "<extract the city/location, or null>", "salary": "<extract the salary/expected pay, or null>" }`;
 
-    const openai = new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const completion = await openai.chat.completions.create({
-      model: 'sarvam-30b',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInputText },
       ],
+      response_format: { type: 'json_object' },
     });
 
     if (!completion.choices) throw new Error('Invalid AI Response');
 
-    const rawResponseText = (completion.choices[0].message.content || '').trim();
-
-    // Bulletproof parsing: extract a JSON-looking object, then parse. If anything
-    // fails, treat the model output as raw conversational text and wrap it so the
-    // conversation keeps flowing (never throw a 500).
-    let parsed;
-    try {
-      const match = rawResponseText.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('No JSON object found in AI response');
-      parsed = JSON.parse(match[0]);
-    } catch {
-      console.warn('[Webhook] AI returned non-JSON, using raw-text fallback:', rawResponseText.slice(0, 120));
-      parsed = { reply: rawResponseText, isComplete: false };
-    }
+    const parsed = JSON.parse(completion.choices[0].message.content);
 
     // Persist updated state (flat format; missing fields keep their existing value).
     chatState.userType = parsed.userType ?? chatState.userType;
@@ -143,7 +131,7 @@ Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not outp
     chatState.isComplete = !!parsed.isComplete;
     await chatState.save();
 
-    let reply = parsed.reply || rawResponseText || '';
+    let reply = parsed.reply || '';
 
     // ------------------------------------------------------------------
     // 3. DATABASE UNIFICATION — WRITE DIRECTLY TO NATIVE MONGODB

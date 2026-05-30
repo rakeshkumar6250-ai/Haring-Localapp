@@ -96,12 +96,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **0-credit UX**: unlocking with insufficient credits → toast → auto-route to `/pricing` checkout. Verified end-to-end (402 → redirect).
 - **Tested**: filters dynamic (57→22→2); mock purchase adds credits (13→23) with toast; 0-credit employer routed to /pricing; 401 without auth. ⚠️ REAL transactions pending real Razorpay test keys from user.
 
-### Phase 16: WhatsApp Brain Migrated to Sarvam AI (May 2026)
-- **LLM swap**: WhatsApp webhook chat brain moved from Groq (`llama-3.3-70b-versatile` via raw fetch) to **Sarvam AI** via the OpenAI SDK: `new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' })`, model **`sarvam-30b`**. Client constructed inside the handler so a missing key fails gracefully (try/catch → TwiML) instead of crashing module load.
-- **JSON handling (Sarvam compatibility)**: `response_format: json_object` REMOVED (Sarvam doesn't support it). Switched to a **flat JSON schema** `{ reply, isComplete, userType, name, category, location, salary }` with strict few-shot examples in the prompt. **Bulletproof parsing**: regex-extract `/\{[\s\S]*\}/` then `JSON.parse`; on any failure, fall back to `{ reply: rawResponseText, isComplete: false }` so raw conversational replies (the "Sare! Job…" bug) never throw a 500 and the conversation continues. Extraction layer updated to flat keys; missing fields keep existing `chatState` values via `??`. Unit-tested across raw JSON, fenced, text-wrapped, raw-conversational, and empty outputs.
-- **Prompt**: persona = explicit Tinglish/street-Telugu instruction for blue-collar workers (short, one question at a time). JSON output schema + all DB/state/matching logic untouched.
-- **Verified**: lint clean; webhook returns valid TwiML 200; log confirms the request reaches `api.sarvam.ai` (403 auth because `SARVAM_API_KEY` not yet set — proves correct URL+model wiring, no crash).
-- **Required env**: `SARVAM_API_KEY` in `/app/getlocal/.env` to go live. (`GROQ_API_KEY` no longer used by the webhook.)
+### Phase 16: WhatsApp Brain — Sarvam Experiment → Rolled Back to OpenAI (May 2026)
+- Sarvam AI (`sarvam-30b`) was trialed but failed to maintain conversation state / JSON discipline. **Rolled back to stable OpenAI config**: `new OpenAI({ apiKey: process.env.OPENAI_API_KEY })`, model **`gpt-4o-mini`**, `response_format: { type: 'json_object' }` reinstated, standard `JSON.parse(completion.choices[0].message.content)` (Sarvam regex/raw-text failsafe REMOVED).
+- **Prompt** retained: strict flat JSON schema + Tinglish/street-Telugu persona for blue-collar workers; relies on OpenAI's native JSON enforcement for `isComplete`/`userType`/`category`/etc. extraction.
+- **DB / state / matching logic untouched.**
+- **Verified**: lint clean; webhook returns valid TwiML 200; calls now hit OpenAI's standard endpoint as intended.
+- **⚠️ BLOCKER**: the `OPENAI_API_KEY` currently in `/app/getlocal/.env` is INVALID — OpenAI returns `401 Incorrect API key provided` (same key also used by Whisper audio transcription). A valid OpenAI key is required in `.env` to run the WhatsApp brain (and voice transcription) live.
 
 ## Prioritized Backlog
 - [x] Real Whisper integration
