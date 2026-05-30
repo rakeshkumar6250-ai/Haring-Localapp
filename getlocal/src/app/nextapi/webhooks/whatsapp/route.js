@@ -108,7 +108,9 @@ Respond ONLY in JSON format:
 {
   "updatedState": { "userType": "employer or worker or null", "name": "string or null", "category": "string or null", "location": "string or null", "salary": "string or null", "isComplete": boolean },
   "replyToUser": "Your SHORT, casual, friendly reply in the user's exact language/style (one line, one question at a time)"
-}`;
+}
+
+OUTPUT RULE: You must respond with ONLY a valid, raw JSON object. Do not include markdown formatting, backticks, or any conversational text outside the JSON.`;
 
     const openai = new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' });
 
@@ -118,12 +120,21 @@ Respond ONLY in JSON format:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInputText },
       ],
-      response_format: { type: 'json_object' },
     });
 
     if (!completion.choices) throw new Error('Invalid AI Response');
 
-    const parsed = JSON.parse(completion.choices[0].message.content);
+    // Sarvam may wrap JSON in markdown fences or stray text — clean before parsing.
+    const rawContent = completion.choices[0].message.content || '';
+    const cleaned = rawContent
+      .replace(/```json/gi, '')
+      .replace(/```/g, '')
+      .trim();
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    const jsonString = jsonStart !== -1 && jsonEnd !== -1 ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned;
+
+    const parsed = JSON.parse(jsonString);
     const state = parsed.updatedState || {};
 
     // Persist updated state.
