@@ -30,7 +30,7 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch('/nextapi/auth/signup', {
+      const res = await fetch('/nextapi/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: phone.trim(), company_name: companyName.trim(), password }),
@@ -58,10 +58,10 @@ export default function SignupPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch('/nextapi/auth/verify-otp', {
+      const res = await fetch('/nextapi/auth/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: verifiedPhone, otp }),
+        body: JSON.stringify({ phone: verifiedPhone, code: otp }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -172,9 +172,6 @@ export default function SignupPage() {
               <p className="text-[#8B95A5]">
                 Enter the 6-digit code sent to <span className="text-white font-medium">{verifiedPhone}</span>
               </p>
-              <div className="mt-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2 inline-block">
-                <p className="text-amber-400 text-xs font-medium" data-testid="otp-hint">Mock Mode: Use OTP 123456</p>
-              </div>
             </div>
 
             <form onSubmit={handleVerifyOtp} className="space-y-4">

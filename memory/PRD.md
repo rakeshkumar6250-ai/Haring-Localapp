@@ -104,6 +104,16 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **VALIDATED END-TO-END (live OpenAI key)**: multi-turn Tinglish worker convo → candidate created in `getlocal.candidates`; employer convo + image upload → job created + 3 cook matches returned with contacts; ChatState deleted on completion. Validation test data cleaned up afterward.
 - **Note**: the `OPENAI_API_KEY` in `.env` was replaced by the user with a valid key (the prior one 401'd).
 
+### Phase 17: Real SMS OTP via Twilio Verify (May 2026)
+- Replaced the mock `123456` signup OTP with **production Twilio Verify** (via `integration_playbook_expert_v2` playbook).
+- **New endpoints** (under `/nextapi/`, NOT `/api/` — the platform ingress routes `/api/*` to the FastAPI backend on :8001, so Next.js API routes must use `/nextapi/`):
+  - `POST /nextapi/auth/otp/send` — `client.verify.v2.services(SID).verifications.create({to, channel:'sms'})`. For signup it also stashes the pending registration (company + bcrypt-hashed password) in `_otpStore`. E.164 (+91) formatting.
+  - `POST /nextapi/auth/otp/verify` — `verificationChecks.create({to, code})`; on `status==='approved'` it creates the employer + wallet from the pending registration (or logs in an existing employer) and issues the existing JWT.
+- **Deleted** the obsolete mock routes `/nextapi/auth/signup` and `/nextapi/auth/verify-otp`.
+- **Frontend** (`signup/page.js`): rewired to the new endpoints (sends `code` not `otp`), removed the "Mock Mode: Use OTP 123456" hint; styling/layout untouched. Backend errors already surface on screen.
+- **Verified**: lint clean; signup page renders (no runtime errors); `send` returns Twilio `pending` success; `verify` reaches Twilio (creds + Verify Service `VA8c...` authenticated — bad creds would 401, not 404); 400 validation paths work. Full `approved` path needs a real phone/device.
+- **Env (already set)**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`.
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC

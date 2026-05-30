@@ -8,8 +8,13 @@
 - Phone: `+919555000111`
 - Password: `test1234`
 - Company: `Test Employer Co`
-- Login at `/login`. Has credits topped up via wallet API for unlock testing.
-- Mock OTP for new signups/verify: `123456`
+- Login at `/login` with phone + password. Has credits topped up via wallet API for unlock testing.
+
+## Signup OTP — NOW REAL (Twilio Verify, May 2026)
+- Mock OTP `123456` is REMOVED. New employer signup sends a REAL SMS OTP via Twilio Verify.
+- Endpoints: `POST /nextapi/auth/otp/send` ({phone, company_name, password}) → sends OTP; `POST /nextapi/auth/otp/verify` ({phone, code}) → verifies, creates employer + wallet, returns JWT.
+- To test signup end-to-end you need a real phone that can receive SMS (enter the actual 6-digit code). The existing test account above can still be used via password login without OTP.
+- Env required (already set): `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`.
 
 ## Demo Data
 - Demo candidate with a playable voice note seeded for testing the `/candidates` voice player:
