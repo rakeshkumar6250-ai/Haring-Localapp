@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
+import OpenAI from 'openai';
 import connectMongoose from '@/lib/mongoose';
 import ChatState from '@/models/ChatState';
 import { getCandidates, getJobs } from '@/lib/mongodb';
@@ -68,7 +69,7 @@ export async function POST(req) {
     // ------------------------------------------------------------------
     // 2. GROQ AI STATE MACHINE
     // ------------------------------------------------------------------
-    const systemPrompt = `You are Kaam.ai, a friendly local hiring assistant in Hyderabad helping daily-wage and blue-collar workers and small employers.
+    const systemPrompt = `You are a friendly hiring assistant. You MUST reply in conversational 'Tinglish' (Telugu words written in the English alphabet) or very simple, spoken street Telugu. Keep questions extremely short and easy to understand for a blue-collar worker.
 
 CRITICAL LANGUAGE & TONE RULES (follow strictly):
 - Audience: blue-collar / daily-wage workers and small shop owners. Many are not highly educated. Talk to them like a helpful friend on the street, NOT like a textbook.
@@ -109,27 +110,20 @@ Respond ONLY in JSON format:
   "replyToUser": "Your SHORT, casual, friendly reply in the user's exact language/style (one line, one question at a time)"
 }`;
 
-    const aiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userInputText },
-        ],
-        response_format: { type: 'json_object' },
-      }),
+    const openai = new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' });
+
+    const completion = await openai.chat.completions.create({
+      model: 'sarvam-30b',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userInputText },
+      ],
+      response_format: { type: 'json_object' },
     });
 
-    const aiData = await aiResponse.json();
-    if (aiData.error) throw new Error(`Groq Error: ${aiData.error.message}`);
-    if (!aiData.choices) throw new Error('Invalid AI Response');
+    if (!completion.choices) throw new Error('Invalid AI Response');
 
-    const parsed = JSON.parse(aiData.choices[0].message.content);
+    const parsed = JSON.parse(completion.choices[0].message.content);
     const state = parsed.updatedState || {};
 
     // Persist updated state.

@@ -96,6 +96,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **0-credit UX**: unlocking with insufficient credits → toast → auto-route to `/pricing` checkout. Verified end-to-end (402 → redirect).
 - **Tested**: filters dynamic (57→22→2); mock purchase adds credits (13→23) with toast; 0-credit employer routed to /pricing; 401 without auth. ⚠️ REAL transactions pending real Razorpay test keys from user.
 
+### Phase 16: WhatsApp Brain Migrated to Sarvam AI (May 2026)
+- **LLM swap**: WhatsApp webhook chat brain moved from Groq (`llama-3.3-70b-versatile` via raw fetch) to **Sarvam AI** via the OpenAI SDK: `new OpenAI({ apiKey: process.env.SARVAM_API_KEY, baseURL: 'https://api.sarvam.ai/v1' })`, model **`sarvam-30b`**, `response_format: json_object` retained. Client constructed inside the handler so a missing key fails gracefully (try/catch → TwiML) instead of crashing module load.
+- **Prompt**: persona line set to the explicit Tinglish/street-Telugu instruction for blue-collar workers (short, one question at a time). JSON output schema + all DB/state/matching logic untouched.
+- **Verified**: lint clean; webhook returns valid TwiML 200; log confirms the request reaches `api.sarvam.ai` (403 auth error because `SARVAM_API_KEY` not yet set — proves correct URL+model wiring, no crash).
+- **Required env**: `SARVAM_API_KEY` in `/app/getlocal/.env` to go live. (`GROQ_API_KEY` no longer used by the webhook.)
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC
