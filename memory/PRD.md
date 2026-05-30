@@ -96,12 +96,13 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **0-credit UX**: unlocking with insufficient credits → toast → auto-route to `/pricing` checkout. Verified end-to-end (402 → redirect).
 - **Tested**: filters dynamic (57→22→2); mock purchase adds credits (13→23) with toast; 0-credit employer routed to /pricing; 401 without auth. ⚠️ REAL transactions pending real Razorpay test keys from user.
 
-### Phase 16: WhatsApp Brain — Sarvam Experiment → Rolled Back to OpenAI (May 2026)
-- Sarvam AI (`sarvam-30b`) was trialed but failed to maintain conversation state / JSON discipline. **Rolled back to stable OpenAI config**: `new OpenAI({ apiKey: process.env.OPENAI_API_KEY })`, model **`gpt-4o-mini`**, `response_format: { type: 'json_object' }` reinstated, standard `JSON.parse(completion.choices[0].message.content)` (Sarvam regex/raw-text failsafe REMOVED).
-- **Prompt** retained: strict flat JSON schema + Tinglish/street-Telugu persona for blue-collar workers; relies on OpenAI's native JSON enforcement for `isComplete`/`userType`/`category`/etc. extraction.
-- **DB / state / matching logic untouched.**
-- **Verified**: lint clean; webhook returns valid TwiML 200; calls now hit OpenAI's standard endpoint as intended.
-- **⚠️ BLOCKER**: the `OPENAI_API_KEY` currently in `/app/getlocal/.env` is INVALID — OpenAI returns `401 Incorrect API key provided` (same key also used by Whisper audio transcription). A valid OpenAI key is required in `.env` to run the WhatsApp brain (and voice transcription) live.
+### Phase 16: WhatsApp Brain — Sarvam Experiment → Rolled Back to OpenAI (May 2026) — VALIDATED LIVE
+- Sarvam AI (`sarvam-30b`) failed to maintain state. **Rolled back to OpenAI**: `new OpenAI({ apiKey: process.env.OPENAI_API_KEY })`, model **`gpt-4o-mini`**, `response_format: { type: 'json_object' }`, standard `JSON.parse` (Sarvam regex/raw-text failsafe removed).
+- **Prompt** retained Tinglish/street-Telugu persona + flat JSON schema; instructions rewritten into a deterministic decision procedure that emphasizes carrying forward "Current State".
+- **DB UNIFICATION FIX (critical)**: `lib/mongoose.js` was connecting without a db name → Mongoose defaulted to the `test` database while the native driver used `getlocal` (ChatState was landing in `test`). Fixed: `mongoose.connect(MONGODB_URI, { dbName: process.env.DB_NAME })`. Now ChatState + candidates + jobs all live in `getlocal`.
+- **Completion guard (server-side)**: gpt-4o-mini was unreliable at flipping `isComplete`. Added a deterministic guard in the webhook: worker complete when name+category+location+salary present; employer complete when category+location+salary+documentUrl present. `chatState.isComplete = parsed.isComplete || workerComplete || employerComplete`. DB-write + matching logic unchanged.
+- **VALIDATED END-TO-END (live OpenAI key)**: multi-turn Tinglish worker convo → candidate created in `getlocal.candidates`; employer convo + image upload → job created + 3 cook matches returned with contacts; ChatState deleted on completion. Validation test data cleaned up afterward.
+- **Note**: the `OPENAI_API_KEY` in `.env` was replaced by the user with a valid key (the prior one 401'd).
 
 ## Prioritized Backlog
 - [x] Real Whisper integration

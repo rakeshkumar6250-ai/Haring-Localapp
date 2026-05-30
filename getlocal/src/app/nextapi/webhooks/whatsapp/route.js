@@ -83,7 +83,7 @@ CRITICAL LANGUAGE & TONE RULES (follow strictly):
 
 CRITICAL LANGUAGE RULE: Always reply in the EXACT SAME language/script the user is using.
 
-Current State: ${JSON.stringify({
+Current State (info already collected — TREAT THESE AS CONFIRMED, never ask for a field that is already filled): ${JSON.stringify({
       userType: chatState.userType,
       name: chatState.name,
       category: chatState.category,
@@ -93,19 +93,16 @@ Current State: ${JSON.stringify({
       isComplete: chatState.isComplete,
     })}
 
-Instructions:
-1. If userType is null, ask if they want to HIRE someone ('employer') or FIND a job ('worker').
-2. Collect the user's name if it is still null.
-3. If userType is 'employer':
-   a. Ask for missing category, location, and salary.
-   b. If those are filled but documentUrl is null, you MUST ask them to upload a photo of their Company Registration, GST, or Govt ID card to verify their business.
-   c. Do NOT mark isComplete as true for an employer until documentUrl is NOT null.
-4. If userType is 'worker': Ask for missing name, category, location, and expected salary. (No ID upload required yet).
-5. Ask for only ONE missing piece of info at a time.
-6. If all required fields are filled (including documentUrl for employers), set isComplete to true and reply with a final confirmation.
+How to decide your reply (follow in order, every turn):
+1. First merge any new info from the user's latest message into the Current State above. Echo back every value you already know — do NOT reset known fields to null.
+2. If userType is null -> ask: do they want to FIND a job (worker) or HIRE someone (employer)?
+3. WORKER required fields: name, category (job type), location, salary. Ask for ONLY the first field that is still null — one short question.
+4. EMPLOYER required fields: category, location, salary, AND a verification document (documentUrl). If category/location/salary are filled but documentUrl is null, ask them to send a photo of their GST / shop / Govt ID.
+5. COMPLETION RULE (very important): The moment ALL required fields for the user's type are non-null (worker: name+category+location+salary; employer: category+location+salary+documentUrl), you MUST set "isComplete": true and make "reply" a short friendly confirmation. Do NOT ask any more questions once everything is filled.
+6. Never ask two things at once. Keep it to one short line.
 
-Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not output plain text. Do not include markdown, backticks, or any text outside the JSON. You MUST use this EXACT schema, replacing the bracketed placeholders dynamically based on the user's input:
-{ "reply": "<Write your conversational Tinglish/Telugu response here>", "isComplete": <boolean: true or false>, "userType": "<worker or employer, or null if not yet known>", "name": "<extract the person's name, or null>", "category": "<extract the job type, e.g., driver, cook, or null if not yet provided>", "location": "<extract the city/location, or null>", "salary": "<extract the salary/expected pay, or null>" }`;
+Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not output plain text. Do not include markdown, backticks, or any text outside the JSON. Always include EVERY field, carrying forward known values from Current State. Use this EXACT schema:
+{ "reply": "<Write your conversational Tinglish/Telugu response here>", "isComplete": <boolean: true or false>, "userType": "<worker or employer, or null if not yet known>", "name": "<the person's name, or null>", "category": "<the job type, e.g., driver, cook, or null>", "location": "<the city/location, or null>", "salary": "<the salary/expected pay, or null>" }`;
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -128,7 +125,18 @@ Respond ONLY in JSON format. You MUST output ONLY a raw JSON object. Do not outp
     chatState.category = parsed.category ?? chatState.category;
     chatState.location = parsed.location ?? chatState.location;
     chatState.salary = parsed.salary ?? chatState.salary;
-    chatState.isComplete = !!parsed.isComplete;
+
+    // Deterministic completion guard: the LLM is inconsistent about flipping
+    // isComplete, so derive it server-side once every required field is present.
+    // (Worker: name+category+location+salary. Employer: + verification document.)
+    const workerComplete =
+      chatState.userType === 'worker' &&
+      !!chatState.name && !!chatState.category && !!chatState.location && !!chatState.salary;
+    const employerComplete =
+      chatState.userType === 'employer' &&
+      !!chatState.category && !!chatState.location && !!chatState.salary && !!chatState.documentUrl;
+
+    chatState.isComplete = !!parsed.isComplete || workerComplete || employerComplete;
     await chatState.save();
 
     let reply = parsed.reply || '';
