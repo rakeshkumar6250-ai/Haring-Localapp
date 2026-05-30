@@ -71,11 +71,20 @@ export default function HirePage() {
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-white" data-testid="hire-title">Post a New Job</h1>
-        <p className="text-[#8B95A5] text-sm mt-1">
-          {user.company_name} &mdash; fill in the details below
-        </p>
+      <header className="mb-8 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-white" data-testid="hire-title">Post a New Job</h1>
+          <p className="text-[#8B95A5] text-sm mt-1">
+            {user.company_name} &mdash; fill in the details below
+          </p>
+        </div>
+        <a
+          href="/dashboard"
+          className="shrink-0 bg-[#151B2D] border border-white/10 hover:border-[#0052CC] text-white text-sm font-semibold px-3.5 py-2 rounded-xl transition-all"
+          data-testid="view-applicants-link"
+        >
+          View Applicants &rarr;
+        </a>
       </header>
 
       {success ? (

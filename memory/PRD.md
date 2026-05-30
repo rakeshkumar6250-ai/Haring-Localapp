@@ -121,6 +121,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **UI** `jobs/page.js`: wired the existing Apply button (Tailwind untouched). Logged-out click → redirect to `/login`; per-card loading ("Applying…"); success → disabled green "✓ Applied"; 409 → toast "You have already applied for this job"; applied state hydrated on load via GET.
 - **Verified**: lint clean; curl 401/201/409/400 + GET all correct; doc written to `getlocal.applications`; screenshots confirm logged-out→/login redirect, applied-on-load state, and apply→toast→"Applied" flip. Test data cleaned up.
 
+### Phase 19: Employer Applicant Funnel — /dashboard (May 2026)
+- **API** `GET /nextapi/employer/jobs` (auth-only, 401 otherwise): returns the logged-in employer's jobs (web `employer_id===user.id` OR WhatsApp `employer_phone===user.phone`), each enriched with `applicant_count` + `applicants[]`. Each applicant is resolved: `Application.userId` → employer account → phone → matched `candidates` doc → Name/Category/Location (+ phone), with graceful fallback to the account's company name.
+- **UI** `src/app/dashboard/page.js` (new protected route, dark theme): job list with an "Applicants (n)" badge per posting; clicking a job expands the applicant list showing avatar, name, status tag (Pending/Reviewed/Contacted color-coded), Category·Location, and a green "Contact" (tel:) button. Header shows total listings + total applicants and a "+ Post Job" link.
+- **Wiring**: `/dashboard` added to `PROTECTED_ROUTES`; `/hire` header gets a "View Applicants →" link.
+- **Verified**: lint clean; curl 401 + authed response returns job with resolved applicant (name/category/location/phone from candidates join); screenshot confirms badge, expand, Pending status tag, Contact button. Test data cleaned up.
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC
