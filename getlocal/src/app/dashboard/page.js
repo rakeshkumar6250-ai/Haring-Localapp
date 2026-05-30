@@ -24,11 +24,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [toast, setToast] = useState(null);
+  const [premium, setPremium] = useState({ paymentVerificationPending: false, hasPremiumAccess: false });
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const showToast = (msg, type = 'info') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 2500);
+    setTimeout(() => setToast(null), 3000);
   };
+
+  const loadPremium = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/nextapi/payments/manual-upi', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) setPremium(await res.json());
+    } catch {
+      /* ignore */
+    }
+  }, [token]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -45,8 +58,29 @@ export default function DashboardPage() {
   }, [token]);
 
   useEffect(() => {
-    if (!authLoading && user) load();
-  }, [authLoading, user, load]);
+    if (!authLoading && user) {
+      load();
+      loadPremium();
+    }
+  }, [authLoading, user, load, loadPremium]);
+
+  const handleIHavePaid = async () => {
+    setPaying(true);
+    try {
+      const res = await fetch('/nextapi/payments/manual-upi', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('failed');
+      setPremium((p) => ({ ...p, paymentVerificationPending: true }));
+      setShowPayModal(false);
+      showToast('Thanks! Your premium access will be unlocked shortly.', 'success');
+    } catch {
+      showToast('Could not record payment. Please try again.', 'error');
+    } finally {
+      setPaying(false);
+    }
+  };
 
   const updateStatus = async (jobId, applicationId, newStatus) => {
     let snapshot;
@@ -108,6 +142,38 @@ export default function DashboardPage() {
       </header>
 
       <div className="p-4 space-y-4">
+        {/* Premium unlock CTA */}
+        <div className="bg-gradient-to-r from-[#1a1f33] to-[#151B2D] border border-[#D4A017]/30 rounded-2xl p-4 flex items-center justify-between gap-3" data-testid="premium-banner">
+          <div className="min-w-0">
+            <p className="text-white font-semibold text-sm flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5C518"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6z"/></svg>
+              Premium Access
+            </p>
+            <p className="text-[#8B95A5] text-xs mt-0.5">Unlock candidate contacts for just ₹99.</p>
+          </div>
+          {premium.hasPremiumAccess ? (
+            <span className="shrink-0 bg-[#36B37E]/15 text-[#36B37E] text-sm font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5" data-testid="premium-active">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Premium Active
+            </span>
+          ) : premium.paymentVerificationPending ? (
+            <button
+              disabled
+              className="shrink-0 bg-amber-500/15 text-amber-400 text-sm font-semibold px-3.5 py-2 rounded-xl cursor-default"
+              data-testid="premium-pending"
+            >
+              Payment Verification Pending
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowPayModal(true)}
+              className="shrink-0 bg-gradient-to-r from-[#D4A017] to-[#F5C518] text-[#0A0F1C] text-sm font-bold px-4 py-2 rounded-xl transition-all active:scale-95"
+              data-testid="pay-premium-btn"
+            >
+              Pay to Unlock Premium
+            </button>
+          )}
+        </div>
         {loading ? (
           <div className="text-center py-16">
             <div className="w-12 h-12 border-4 border-[#0052CC] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -223,6 +289,61 @@ export default function DashboardPage() {
           })
         )}
       </div>
+
+      {/* Manual UPI payment modal */}
+      {showPayModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !paying && setShowPayModal(false)}
+          data-testid="upi-modal"
+        >
+          <div
+            className="bg-[#151B2D] border border-white/10 rounded-2xl p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">Pay ₹99 via UPI</h3>
+              <button
+                onClick={() => !paying && setShowPayModal(false)}
+                className="text-[#8B95A5] hover:text-white transition-colors"
+                data-testid="upi-modal-close"
+                aria-label="Close"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* QR placeholder (image file swapped in later) */}
+            <div className="bg-white/10 border border-white/10 rounded-xl aspect-square w-48 mx-auto flex flex-col items-center justify-center text-[#8B95A5] mb-4" data-testid="upi-qr-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                <line x1="14" y1="14" x2="14" y2="21"/><line x1="18" y1="14" x2="18" y2="18"/><line x1="21" y1="14" x2="21" y2="21"/>
+              </svg>
+              <span className="text-xs mt-2">UPI QR Code</span>
+            </div>
+
+            <p className="text-[#8B95A5] text-sm text-center mb-5">
+              Scan &amp; pay <span className="text-white font-semibold">₹99</span> via any UPI app to unlock candidate contacts.
+            </p>
+
+            <button
+              onClick={handleIHavePaid}
+              disabled={paying}
+              className="w-full bg-gradient-to-r from-[#D4A017] to-[#F5C518] text-[#0A0F1C] font-bold py-3 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+              data-testid="i-have-paid-btn"
+            >
+              {paying ? (
+                <>
+                  <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20"/></svg>
+                  Submitting...
+                </>
+              ) : (
+                'I have paid'
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div

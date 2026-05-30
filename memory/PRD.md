@@ -133,6 +133,13 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **Verified**: lint clean; curl 401 / 400 / 403(non-owner)/ 200 all correct; status persisted to DB (`reviewed` then `hired`); screenshot confirmed dropdown change → green pill + toast → DB persistence. Test data cleaned up.
 - **Core product is now functionally complete** (post job → worker applies → employer sees applicant funnel → moves them through ATS stages).
 
+### Phase 21: Manual UPI Premium Flow (MVP) (May 2026)
+- Pivoted from Razorpay (no merchant account) to a **manual UPI** flow to test market demand.
+- **API** `POST /nextapi/payments/manual-upi` (auth, 401 otherwise): sets `paymentVerificationPending: true` (+ `payment_requested_at`) on the employer in `getlocal.employers`. `GET` returns `{ paymentVerificationPending, hasPremiumAccess }` for UI hydration.
+- **UI** (`/dashboard`): "Premium Access" banner with a gold **"Pay to Unlock Premium"** button → opens a dark-theme modal with a UPI QR **placeholder** (gray box, image to be swapped later), the copy "Scan & pay ₹99 via any UPI app to unlock candidate contacts.", and an "I have paid" button. On click: POST → optimistic close + button becomes disabled **"Payment Verification Pending"** + success toast. Shows "Premium Active" (green) when `hasPremiumAccess` is later set (manual admin step).
+- **Verified**: lint clean; curl 401 / status false→true / DB persisted; screenshots confirm modal (QR placeholder + ₹99 copy + I-have-paid), then post-click pending button + success toast. Test flag reset.
+- **Manual ops note**: admin verifies the UPI payment out-of-band, then sets `hasPremiumAccess:true` (and clears `paymentVerificationPending`) on the employer doc.
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC
