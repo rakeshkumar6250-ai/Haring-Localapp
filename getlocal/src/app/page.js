@@ -2,22 +2,7 @@ import Link from 'next/link';
 
 export default function LandingPage() {
   const categoryGroups = [
-    {
-      title: "🏠 Home & Domestic",
-      items: [
-        { name: 'Maids', icon: '🧹' },
-        { name: 'Cooks', icon: '🧑‍🍳' },
-        { name: 'Nannies', icon: '👶' },
-      ]
-    },
-    {
-      title: "🏪 Shop & Business",
-      items: [
-        { name: 'Sales Staff', icon: '🏬' },
-        { name: 'Delivery', icon: '🛵' },
-        { name: 'Security', icon: '👮' },
-      ]
-    },
+  
     {
       title: "🎓 Education",
       items: [
@@ -42,6 +27,22 @@ export default function LandingPage() {
         { name: 'Plumbers', icon: '🔧' },
       ]
     }
+      {
+      title: "🏠 Home & Domestic",
+      items: [
+        { name: 'Maids', icon: '🧹' },
+        { name: 'Cooks', icon: '🧑‍🍳' },
+        { name: 'Nannies', icon: '👶' },
+      ]
+    },
+    {
+      title: "🏪 Shop & Business",
+      items: [
+        { name: 'Sales Staff', icon: '🏬' },
+        { name: 'Delivery', icon: '🛵' },
+        { name: 'Security', icon: '👮' },
+      ]
+    },
   ];
 
   return (
