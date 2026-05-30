@@ -140,6 +140,12 @@ MONGODB_URI, DB_NAME, OPENAI_API_KEY, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, JWT_
 - **Verified**: lint clean; curl 401 / status false→true / DB persisted; screenshots confirm modal (QR placeholder + ₹99 copy + I-have-paid), then post-click pending button + success toast. Test flag reset.
 - **Manual ops note**: admin verifies the UPI payment out-of-band, then sets `hasPremiumAccess:true` (and clears `paymentVerificationPending`) on the employer doc.
 
+### Phase 22: Admin "Pending Payments" Panel (May 2026)
+- **API** `GET /nextapi/admin/pending-payments?key=ADMIN_SECRET` (401 otherwise): lists employers with `paymentVerificationPending:true` (id, company_name, phone, requested time).
+- **API** `PATCH /nextapi/admin/approve-payment/[employerId]?key=ADMIN_SECRET` (401/404 guarded): sets `hasPremiumAccess:true`, `paymentVerificationPending:false`, `payment_approved_at`.
+- **UI** (`/admin`): new "Pending UPI Payments (n)" panel at the top — table of Company / Phone / Requested / **Approve** button. Approving calls PATCH, shows a success toast, and removes the row optimistically. Reuses the existing `secretKey` auth; fetched on admin login.
+- **Verified**: lint clean; curl 401 (no key) + GET list + PATCH approve (DB persisted hasPremiumAccess=true, pending=false); screenshots confirm panel renders pending employer, Approve → toast + optimistic removal → "(0)". Closes the manual UPI ops loop (employer "I have paid" → admin Approve → premium granted).
+
 ## Prioritized Backlog
 - [x] Real Whisper integration
 - [x] Employer & Candidate KYC
