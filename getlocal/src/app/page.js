@@ -52,8 +52,8 @@ export default function LandingPage() {
       {/* Hero Section (Green) */}
       <div className="bg-[#1F8A61] rounded-b-[2rem] p-6 pt-12 text-white shadow-lg">
         <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center font-bold">K</div>
-          <span className="text-xl font-bold tracking-tight">Kaam.ai</span>
+          <div className="w-8 h-8 bg-[#FABB05] text-[#0A0F1C] rounded-lg flex items-center justify-center font-bold">F</div>
+          <span className="text-xl font-bold tracking-tight">FastNaukari.ai</span>
         </div>
         
         <h1 className="text-4xl font-bold leading-tight mb-2">

@@ -4,6 +4,11 @@ import ChatWidget from '@/components/ChatWidget';
 import { AuthProvider } from '@/components/AuthProvider';
 
 export const metadata = {
+  title: 'FastNaukari.ai | Hire trusted staff near you',
+  description: 'AI-powered, WhatsApp-first platform to find and hire local blue-collar workers instantly.',
+}
+
+export const metadata = {
   title: 'GetLocal - Hire Local Talent',
   description: 'Voice-first marketplace for blue-collar hiring',
 };
